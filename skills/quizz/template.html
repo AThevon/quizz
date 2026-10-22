@@ -1,0 +1,2505 @@
+<title>__NOM__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+__POLICES__
+<style>
+/* Layout : un rail sommaire collant à gauche (vue d'ensemble, enregistrement, bilan), une colonne de questions
+   à droite, une question par écran. Sur mobile, le rail devient une barre de pastilles. Le thème ne touche qu'aux
+   couleurs, polices, arrondis (--r, 12px pour les options) et espacements (--d) : la mise en page ne bouge pas. */
+/* Thème : couleurs (--bg ... --sky, --on-ink sur l'accent, --on-state sur les encres, --voile, color-scheme), polices (--display, --title, --sans, --mono), arrondi (--r)
+   et densité (--d), posés par build.py depuis themes/*.json. Chaque mode clair ou sombre suit le réglage de l'appareil
+   et le data-theme du viewer. */
+__THEME__
+:root {
+  --gl: max(16px, env(safe-area-inset-left, 0px));
+  --gr: max(16px, env(safe-area-inset-right, 0px));
+  --ease-pose: cubic-bezier(.2, .9, .3, 1.25);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.55;
+  padding-left: var(--gl);
+  padding-right: var(--gr);
+  padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+  -webkit-font-smoothing: antialiased;
+}
+button, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: calc(var(--r) * 6 / 12); }
+
+/* ---------- Mise en page ---------- */
+.app {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  gap: clamp(28px, 4vw, 64px);
+  max-width: none;
+  margin: 0 auto;
+}
+
+/* ---------- Rail sommaire ---------- */
+.rail {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  margin-block: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--r) * 16 / 12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.rail-head { padding: 14px 18px 12px; border-bottom: 1px solid var(--line); }
+.count { display: flex; align-items: baseline; gap: 12px; }
+.count-n {
+  font-family: var(--title); font-weight: 500; font-size: 32px; line-height: 1; letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+}
+.count-n .of { color: var(--muted); }
+.count-l { font-size: 14px; color: var(--text-2); }
+.segs { display: flex; gap: 3px; margin-top: 10px; }
+.seg { flex: 1; height: 4px; border-radius: calc(var(--r) * 2 / 12); background: var(--line); transition: background-color 160ms ease; }
+
+.rail-list { flex: 1; overflow-y: auto; padding: 2px 8px 6px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.rail-group { margin: 10px 10px 2px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.ri {
+  display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: 4px; row-gap: 0;
+  width: 100%; text-align: left; background: transparent; border: 0;
+  padding: 5px 10px; border-radius: calc(var(--r) * 8 / 12);
+  transition: background-color 140ms ease;
+}
+.ri:hover { background: var(--surface-2); }
+.ri[aria-current="true"] { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
+.ri-num { grid-row: span 2; font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--muted); padding-top: 3px; }
+.ri[aria-current="true"] .ri-num { color: var(--text); }
+.ri-title { font-size: 14px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink, var(--muted));
+}
+.tag::before { content: ""; width: 8px; height: 8px; border-radius: calc(var(--r) * 2 / 12); background: var(--ink, transparent); border: 1.5px solid var(--ink, var(--control)); }
+
+[data-state="reco"]    { --ink: var(--sun); }
+[data-state="ecart"]   { --ink: var(--rasp); }
+[data-state="toi"]     { --ink: var(--lilac); }
+[data-state="fait"]    { --ink: var(--sky); }
+
+.rail-foot { padding: 12px 18px 16px; border-top: 1px solid var(--line); }
+.save { margin: 0 0 10px; font-size: 13px; line-height: 1.4; color: var(--muted); }
+.save.err { color: var(--rasp); }
+.keys-btn {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: 0; padding: 6px 0; margin-bottom: 10px;
+  font-size: 14px; color: var(--text-2); text-align: left;
+  transition: color 140ms ease;
+}
+.keys-btn:hover { color: var(--text); }
+kbd {
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  display: inline-block; min-width: 22px; padding: 0 6px; text-align: center;
+  border: 1px solid var(--control); border-bottom-width: 2px; border-radius: calc(var(--r) * 5 / 12);
+  color: var(--text); background: var(--bg); line-height: 1.6;
+}
+.btn-fin {
+  width: 100%; border: 0; border-radius: calc(var(--r) * 10 / 12); padding: 11px 16px;
+  background: var(--accent); color: var(--on-ink);
+  font-weight: 700; font-size: 15px;
+  transition: transform 140ms ease, background-color 140ms ease;
+}
+.btn-fin:hover { background: var(--accent-hi); }
+.btn-fin:disabled { background: var(--surface-2); color: var(--text-2); cursor: default; }
+.btn-fin:active { transform: translateY(1px); }
+
+/* barre mobile */
+.mini { display: none; }
+
+/* ---------- Colonne de lecture ---------- */
+main { padding-block: clamp(32px, 6vh, 64px) 96px; min-width: 0; }
+.top { max-width: 1040px; }
+.eyebrow { margin: 0 0 14px; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 {
+  margin: 0; font-family: var(--title); font-weight: 500;
+  font-size: clamp(32px, 3.4vw, 46px); line-height: 1.06; letter-spacing: -.015em;
+  text-wrap: balance;
+}
+.intro { margin: 18px 0 0; max-width: 40em; font-size: 17px; line-height: 1.55; color: var(--text-2); }
+
+.seul { margin-top: 20px; max-width: 40rem; border-top: 1px solid var(--line); padding-top: 12px; }
+.seul summary {
+  list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 600; color: var(--text-2); padding: 4px 0;
+}
+.seul summary::-webkit-details-marker { display: none; }
+.seul summary::before {
+  content: "+"; font-family: var(--mono); font-size: 14px; width: 22px; height: 22px;
+  display: inline-grid; place-items: center; border: 1px solid var(--control); border-radius: calc(var(--r) * 5 / 12); color: var(--text-2);
+}
+.seul[open] summary::before { content: "-"; }
+.seul ul { margin: 10px 0 0; padding: 0 0 0 32px; color: var(--text-2); font-size: 15px; line-height: 1.6; }
+.seul li { margin: 6px 0; }
+.seul li::marker { color: var(--muted); }
+
+.group-h {
+  display: flex; align-items: center; gap: 16px;
+  margin: 0 0 22px; max-width: 960px;
+  font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+.group-h::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.group { margin-top: calc(72px * var(--d)); }
+
+/* ---------- Question ---------- */
+.q { max-width: 960px; scroll-margin-top: 64px; outline: none; }
+.q + .q { margin-top: calc(64px * var(--d)); }
+.q:focus-visible { outline: none; }
+.q-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 56px; margin-bottom: 6px; }
+.q-num {
+  font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text-2);
+  border: 1px solid var(--control); border-radius: calc(var(--r) * 6 / 12); padding: 2px 8px;
+}
+.q.is-cur .q-num { color: var(--on-ink); background: var(--accent); border-color: var(--accent); }
+.q-type { margin-left: 10px; font-size: 13px; color: var(--muted); }
+.q-title {
+  margin: 0; font-family: var(--title); font-weight: 500;
+  font-size: clamp(23px, 2.2vw, 30px); line-height: 1.15; letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.q-img { display: block; max-width: 100%; margin-top: 14px; border-radius: calc(var(--r) * 10 / 12); border: 1px solid var(--line); }
+.q-ctx { margin: 12px 0 0; max-width: 40em; font-size: 16px; line-height: 1.55; color: var(--text-2); }
+
+/* tampon */
+.slot { flex: none; min-height: 56px; display: flex; align-items: center; padding-right: 8px; }
+.stamp {
+  --ink: var(--sky);
+  display: inline-block;
+  font-family: var(--display); text-transform: uppercase;
+  font-size: 26px; line-height: 1; letter-spacing: .07em;
+  color: var(--ink);
+  border: 5px double var(--ink);
+  border-radius: calc(var(--r) * 6 / 12);
+  padding: 6px 12px 4px;
+  transform: rotate(-7deg);
+  white-space: nowrap;
+}
+.stamp.pose { animation: pose 300ms var(--ease-pose) both; }
+@keyframes pose {
+  from { opacity: 0; transform: scale(1.8) rotate(-15deg); }
+  to   { opacity: 1; transform: scale(1) rotate(-7deg); }
+}
+
+/* options */
+.opts { display: flex; flex-direction: column; gap: calc(8px * var(--d)); margin-top: calc(20px * var(--d)); }
+.opt {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; column-gap: 14px;
+  width: 100%; min-height: max(44px, calc(50px * var(--d))); padding: calc(10px * var(--d)) calc(14px * var(--d)); text-align: left;
+  background: var(--surface); border: 1.5px solid var(--control); border-radius: calc(var(--r) * 12 / 12);
+  font-size: 16px; line-height: 1.4; color: var(--text);
+  transition: opacity 160ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+.opt:hover { border-color: var(--text-2); background: var(--surface-2); }
+.key {
+  width: 28px; height: 28px; display: grid; place-items: center;
+  font-family: var(--mono); font-size: 13px; font-weight: 700; text-transform: uppercase;
+  border: 1.5px solid var(--control); border-radius: 50%; color: var(--text-2);
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.opt[role="checkbox"] .key { border-radius: min(calc(var(--r) * 8 / 12), 8px); } /* plafonné : une case reste carrée face aux radios */
+.reco-tag {
+  font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--sun); border: 1.5px solid var(--sun); border-radius: calc(var(--r) * 6 / 12); padding: 1px 7px; white-space: nowrap;
+}
+.opt.toi .otext { font-style: italic; }
+
+.opt[aria-checked="true"] { border-color: var(--ink); border-width: 2px; padding: calc(10px * var(--d) - .5px) calc(14px * var(--d) - .5px); background: var(--surface-2); }
+.opt[aria-checked="true"] .key { background: var(--ink); border-color: var(--ink); color: var(--on-state); }
+.opt[aria-checked="true"] .otext { color: var(--text); font-weight: 600; }
+.q[data-type="multi"] .opt[aria-checked="true"] { --ink: var(--sky); }
+.has-choice .opt[aria-checked="false"] { opacity: .7; }
+.has-choice .opt[aria-checked="false"]:hover,
+.has-choice .opt[aria-checked="false"]:focus-visible { opacity: 1; }
+
+/* nuance et texte libre */
+.field { display: block; margin-top: 14px; }
+.field-l { display: flex; align-items: baseline; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.field-l small { font-size: 13px; font-weight: 400; color: var(--muted); }
+textarea {
+  display: block; width: 100%;
+  resize: none; field-sizing: content;
+  min-height: 44px; max-height: 50vh; overflow-y: auto;
+  padding: 10px 14px; font-size: 16px; line-height: 1.5;
+  background: var(--field); border: 1.5px solid var(--control); border-radius: calc(var(--r) * 12 / 12); color: var(--text);
+  transition: border-color 140ms ease;
+}
+textarea::placeholder { color: var(--muted); }
+textarea:hover { border-color: var(--text-2); }
+textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-color: var(--text-2); }
+.field.big textarea { min-height: 110px; font-size: 16px; }
+
+/* ---------- Récap ---------- */
+.fin { margin-top: calc(96px * var(--d)); max-width: 960px; padding-top: calc(36px * var(--d)); border-top: 2px solid var(--line); scroll-margin-top: 48px; }
+.fin:focus, .fin:focus-visible, .q:focus { outline: none; }
+.fin h2 { margin: 0; font-family: var(--title); font-weight: 500; font-size: clamp(28px, 3vw, 40px); line-height: 1.08; letter-spacing: -.012em; }
+.fin-lead { margin: 12px 0 0; font-size: 16px; color: var(--text-2); }
+.recap { margin-top: calc(28px * var(--d)); display: flex; flex-direction: column; gap: calc(26px * var(--d)); }
+.recap h3 { margin: 0 0 10px; display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink); }
+.recap h3 .n { font-family: var(--mono); font-size: 13px; color: var(--on-state); background: var(--ink); border-radius: calc(var(--r) * 5 / 12); padding: 1px 8px; letter-spacing: 0; }
+.recap .vide-h { --ink: var(--text-2); }
+.rl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: calc(8px * var(--d)); }
+.rrow {
+  width: 100%; min-height: 44px; display: grid; grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; align-items: baseline;
+  text-align: left; padding: calc(10px * var(--d)) calc(14px * var(--d)); border-radius: calc(var(--r) * 10 / 12);
+  background: var(--surface); border: 1px solid var(--line);
+  transition: background-color 140ms ease;
+}
+.rrow:hover { background: var(--surface-2); }
+.rrow-num { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--ink, var(--text-2)); }
+.rrow-t { font-size: 15px; line-height: 1.45; }
+.rrow-sub { grid-column: 2; margin-top: 2px; font-size: 14px; color: var(--text-2); }
+.rnone { margin: 0; font-size: 16px; color: var(--muted); }
+.autre { margin-top: 32px; }
+.fin-cta { margin-top: 36px; display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+.fin-cta .btn-fin { width: auto; padding: 13px 26px; font-size: 16px; border-radius: calc(var(--r) * 10 / 12); }
+.done { margin: 0; font-size: 15px; color: var(--accent); min-height: 1.6em; max-width: 36em; }
+
+/* ---------- Messages à envoyer ---------- */
+.msgs { margin-top: calc(56px * var(--d)); padding-top: calc(28px * var(--d)); border-top: 1px solid var(--line); }
+.msgs h3 { margin: 0; font-family: var(--title); font-weight: 500; font-size: clamp(22px, 2.2vw, 28px); line-height: 1.15; letter-spacing: -.01em; }
+.msgs-lead { margin: 8px 0 0; max-width: 40em; font-size: 15px; color: var(--text-2); }
+.msg-list { margin-top: calc(20px * var(--d)); display: flex; flex-direction: column; gap: calc(16px * var(--d)); }
+.msg { background: var(--surface); border: 1px solid var(--line); border-radius: calc(var(--r) * 14 / 12); padding: calc(16px * var(--d)); transition: opacity 160ms ease; }
+.msg[data-statut="envoye"] { opacity: .6; }
+.msg[data-statut="envoye"]:focus-within { opacity: 1; }
+.msg[data-statut="ecarte"] { background: transparent; border-style: dashed; }
+.msg[data-statut="ecarte"] .msg-to { color: var(--text-2); text-decoration: line-through; text-decoration-color: var(--muted); }
+.msg .msg-ecarte textarea { margin-top: 10px; min-height: 44px; }
+.msg-off { font-size: 14px; color: var(--muted); }
+.msg-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.msg-to { font-size: 16px; font-weight: 600; }
+.msg-where { font-size: 14px; color: var(--text-2); }
+.msg-fmt {
+  margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--text-2);
+  border: 1px solid var(--control); border-radius: calc(var(--r) * 5 / 12); padding: 0 7px;
+}
+.msg-why { margin: 6px 0 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
+.msg textarea { margin-top: 12px; min-height: 96px; }
+.msg-actions { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.btn-copy {
+  border: 0; border-radius: calc(var(--r) * 9 / 12); padding: 8px 18px;
+  background: var(--accent); color: var(--on-ink); font-weight: 700; font-size: 14px;
+  transition: background-color 140ms ease;
+}
+.btn-copy:hover { background: var(--accent-hi); }
+.btn-copy:disabled { background: var(--surface-2); color: var(--text-2); cursor: default; }
+.btn-copy:active { transform: translateY(1px); }
+.msg-link { font-size: 14px; color: var(--accent); text-underline-offset: 3px; }
+.msg-sent { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-2); cursor: pointer; }
+.msg-sent input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.btn-reset { background: none; border: 0; padding: 4px 0; font-size: 14px; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; }
+.btn-reset:hover { color: var(--text); }
+.msg-state { font-size: 13px; color: var(--accent); }
+.msg-state.err { color: var(--rasp); }
+
+/* ---------- Recadrage ---------- */
+.rc-banner {
+  max-width: 960px; margin: 0 0 calc(28px * var(--d)); padding: calc(14px * var(--d)) calc(16px * var(--d)); scroll-margin-top: 80px;
+  background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--lilac); border-radius: calc(var(--r) * 12 / 12);
+}
+.rc-banner[data-etat="pret"] { border-left-color: var(--accent); }
+.rc-banner[data-etat="fait"] { border-left-color: var(--sky); }
+.rc-banner p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--text-2); }
+.rc-banner strong { color: var(--text); font-weight: 600; }
+.rc-banner .msg-actions { margin-top: 8px; }
+.rc-card { max-height: calc(100dvh - 48px); overflow-y: auto; }
+.rc-lead { margin: -8px 0 18px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
+.rc-l { margin: 18px 0 8px; font-size: 14px; font-weight: 600; color: var(--text-2); }
+.rc-l small, .rc-card .field-l small { font-size: 13px; font-weight: 400; color: var(--muted); }
+.rc-card .field-l { margin-top: 18px; }
+.rc-opts { margin-top: 0; gap: 6px; --ink: var(--lilac); }
+.rc-opts .opt { min-height: 42px; padding: 7px 12px; font-size: 15px; }
+.rc-opts .opt[aria-checked="true"] { padding: 6.5px 11.5px; }
+.rc-opts .key { width: 22px; height: 22px; font-size: 12px; }
+.rc-opts[role="group"] .key { border-radius: min(calc(var(--r) * 6 / 12), 6px); }
+.rc-actions { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.rc-actions .btn-fin { width: auto; padding: 11px 24px; }
+.rc-opts .opt[aria-checked="true"] .key::after { content: "✓"; }
+.rc-opts .opt[role="radio"][aria-checked="true"] .key::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--on-state); }
+.mini-rc {
+  flex: none; background: none; border: 1px solid var(--control); border-radius: calc(var(--r) * 8 / 12);
+  padding: 5px 10px; font-size: 13px; color: var(--text-2);
+}
+
+/* ---------- Conditionnelles, bloquantes, j'y tiens, prédictions ---------- */
+.q[hidden], .ri[hidden], .pill[hidden], .seg[hidden], .group[hidden], .rail-group[hidden], .tenir[hidden], .express[hidden] { display: none; }
+.q.q-in { animation: q-in 260ms ease-out both; }
+@keyframes q-in { from { opacity: 0; transform: translateY(8px); } }
+.bloq {
+  margin-left: 10px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap;
+  color: var(--rasp); border: 1.5px solid var(--rasp); border-radius: calc(var(--r) * 6 / 12); padding: 1px 7px;
+}
+.ri-meta { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ri-bloq { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--rasp); }
+.tenir { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.tn {
+  background: none; border: 1.5px solid var(--control); border-radius: calc(var(--r) * 8 / 12); padding: 4px 12px;
+  font-size: 14px; color: var(--text-2);
+  transition: border-color 140ms ease, color 140ms ease;
+}
+.tn:hover { border-color: var(--text-2); color: var(--text); }
+.tn[aria-pressed="true"] { border-color: var(--accent); color: var(--text); background: var(--surface-2); }
+.tn[aria-pressed="true"]::before { content: "✓ "; color: var(--accent); }
+.express {
+  display: inline-flex; align-items: center; gap: 10px; margin-top: 18px;
+  background: none; border: 1px solid var(--control); border-radius: 999px; padding: 6px 14px 6px 8px;
+  font-size: 14px; color: var(--text-2);
+  transition: border-color 140ms ease, color 140ms ease;
+}
+.express:hover { color: var(--text); border-color: var(--text-2); }
+.express-sw { position: relative; flex: none; width: 30px; height: 18px; border: 1.5px solid var(--control); border-radius: 9px; transition: border-color 140ms ease; }
+.express-sw::after {
+  content: ""; position: absolute; top: 2.5px; left: 3px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--muted); transition: transform 160ms ease, background-color 160ms ease;
+}
+.express[aria-pressed="true"] { color: var(--text); border-color: var(--accent); }
+.express[aria-pressed="true"] .express-sw { border-color: var(--accent); }
+.express[aria-pressed="true"] .express-sw::after { background: var(--accent); transform: translateX(11px); }
+.rrow-mark { margin-left: 10px; font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--muted); white-space: nowrap; }
+.rrow-mark.bq { color: var(--rasp); }
+.rtenir { margin: 0; font-size: 14px; line-height: 1.6; color: var(--text-2); }
+.rtenir button {
+  background: none; border: 0; padding: 0 2px; font-family: var(--mono); font-size: 13px; font-weight: 700;
+  color: var(--text); text-decoration: underline; text-decoration-color: var(--control); text-underline-offset: 3px;
+}
+.rtenir button:hover { text-decoration-color: var(--text); }
+.rnote { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+
+/* ---------- Ce que j'en ai fait, approfondir ---------- */
+.precedent { margin: 0 0 12px; max-width: 44em; font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.precedent b { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text); }
+.fait-resume { margin: 14px 0 0; max-width: 40em; font-size: 16px; line-height: 1.55; color: var(--text); }
+.fait-part { margin-top: 22px; }
+.fait h4, .appro h4 { margin: 0 0 10px; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.fait .rrow-num { color: var(--ink, var(--text-2)); }
+.rrow.fixe { cursor: default; }
+.rrow.fixe:hover { background: var(--surface); }
+.fait-files, .fait-suite { margin: 0; padding: 0 0 0 22px; font-size: 15px; line-height: 1.55; color: var(--text-2); }
+.fait-files li, .fait-suite li { margin: 4px 0; }
+.fait-files li::marker, .fait-suite li::marker { color: var(--muted); }
+.fait-files code { font-family: var(--mono); font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
+.fait-files a { color: var(--accent); text-underline-offset: 3px; overflow-wrap: anywhere; }
+.appro { margin-top: 32px; padding-top: 22px; border-top: 1px solid var(--line); max-width: 40em; }
+.appro-lead { margin: 0 0 12px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
+.appro .msg-actions { margin-top: 10px; }
+
+/* ---------- Creuse ---------- */
+.cr-btn[hidden], .cr-zone[hidden], .cr-hist[hidden], .cr-live[hidden] { display: none; }
+.cr-btn {
+  display: inline-flex; align-items: center; gap: 10px; margin-top: 14px;
+  background: none; border: 1.5px solid var(--control); border-radius: calc(var(--r) * 8 / 12); padding: 4px 6px 4px 12px;
+  font-size: 14px; color: var(--text-2);
+  transition: border-color 140ms ease, color 140ms ease;
+}
+.cr-btn:hover { border-color: var(--text-2); color: var(--text); }
+.cr-btn[aria-expanded="true"] { border-color: var(--sky); color: var(--text); background: var(--surface-2); }
+.cr {
+  margin-top: 10px; padding: calc(14px * var(--d)) calc(16px * var(--d)) calc(16px * var(--d)); scroll-margin-bottom: 24px;
+  background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--sky); border-radius: calc(var(--r) * 12 / 12);
+}
+.cr:focus, .cr:focus-visible { outline: none; }
+.cr h4 { margin: 0 0 4px; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.cr-lead { margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
+.cr-hist, .cr-live { margin-top: 14px; }
+.cr-hist > * + * { margin-top: 14px; }
+.cr-old > .cr-e { margin-top: 12px; }
+.cr-old summary { cursor: pointer; width: fit-content; font-size: 14px; color: var(--text-2); }
+.cr-old summary:hover { color: var(--text); }
+.cr-q { margin: 0; font-size: 14px; font-weight: 600; color: var(--sky); }
+.cr-a { margin-top: 4px; max-width: 40em; font-size: 15px; line-height: 1.55; color: var(--text); white-space: pre-line; overflow-wrap: anywhere; }
+.cr-a.attente { color: var(--muted); }
+.cr-zone { margin-top: 16px; }
+.cr-asks { display: flex; flex-direction: column; gap: 6px; }
+.cr-ask {
+  width: 100%; text-align: left; background: var(--bg); border: 1.5px solid var(--control); border-radius: calc(var(--r) * 10 / 12);
+  padding: 7px 12px; font-size: 15px; color: var(--text);
+  transition: border-color 140ms ease;
+}
+.cr-ask:hover { border-color: var(--text-2); }
+.cr-ask:disabled { color: var(--muted); border-color: var(--line); cursor: default; }
+.cr-zone .field-l { margin-top: 14px; }
+.cr .msg-actions { margin-top: 10px; }
+
+/* ---------- À plusieurs ---------- */
+/* Chez un participant, ce qui ne regarde que le propriétaire disparaît (recadrage, messages, bilan de Claude). */
+html[data-role="invite"] [data-proprio] { display: none; }
+/* Rôle pas encore connu : rien de réservé au propriétaire ne doit apparaître puis disparaître chez un participant. */
+html:not([data-role]) [data-proprio] { visibility: hidden; }
+.avis-tete { margin: 0 0 12px; max-width: 44em; font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.avis-tete b { font-weight: 600; color: var(--text); }
+.avis-q { margin: 10px 0 0; font-size: 14px; line-height: 1.6; color: var(--muted); }
+.avis-q[hidden], .avis-tete[hidden] { display: none; }
+.avis-h { margin-right: 8px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.avis-p { white-space: nowrap; color: var(--text-2); }
+.avis-p.txt { white-space: normal; overflow-wrap: anywhere; }
+.avis-p b { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text); }
+.avis-p.diff b { color: var(--rasp); }
+.avis-l { display: block; }
+.avis-l + .avis-l { margin-top: 2px; }
+.avis-l.diff .avis-v { color: var(--rasp); }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 899px) {
+  body { font-size: 16px; }
+  .app { display: block; }
+  .rail { display: none; }
+  .mini {
+    display: flex; align-items: center; gap: 14px;
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
+    margin-inline: calc(-1 * var(--gl)) calc(-1 * var(--gr));
+    padding: 10px var(--gr) 10px var(--gl);
+    background: var(--bg); border-bottom: 1px solid var(--line);
+  }
+  .mini-count { font-family: var(--title); font-weight: 500; font-size: 26px; line-height: 1; letter-spacing: -.01em; flex: none; min-width: 50px; }
+  .mini-count .of { color: var(--muted); }
+  .pills { flex: 1; display: flex; justify-content: space-between; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 4px 2px; }
+  .pill {
+    flex: none; width: 32px; height: 32px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    border: 1.5px solid var(--control); background: transparent; color: var(--text-2);
+    transition: background-color 140ms ease, border-color 140ms ease;
+  }
+  .pill[data-state]:not([data-state="vide"]) { background: var(--ink); border-color: var(--ink); color: var(--on-state); }
+  .pill[aria-current="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
+  main { padding-block: 28px 120px; }
+  .intro { font-size: 16px; }
+  .group { margin-top: calc(56px * var(--d)); }
+  .group-h { margin-bottom: 18px; }
+  .q { scroll-margin-top: 80px; }
+  .q + .q { margin-top: calc(48px * var(--d)); }
+  .q-head { min-height: 48px; margin-bottom: 4px; }
+  .slot { min-height: 48px; }
+  .stamp { font-size: 22px; border-width: 4px; padding: 5px 10px 3px; }
+  .q-ctx { font-size: 15px; margin-top: 10px; }
+  .opts { margin-top: calc(16px * var(--d)); }
+  .opt { grid-template-columns: 28px minmax(0, 1fr); column-gap: 12px; row-gap: 4px; padding: calc(10px * var(--d)) calc(12px * var(--d)); font-size: 15px; }
+  .opt[aria-checked="true"] { padding: calc(10px * var(--d) - .5px) calc(12px * var(--d) - .5px); }
+  .key { width: 28px; height: 28px; }
+  .reco-tag { grid-column: 2; grid-row: 1; justify-self: start; }
+  .opt .otext { grid-column: 2; }
+  .opt.has-reco .key { grid-row: 1 / span 2; align-self: center; }
+  .fin { margin-top: calc(72px * var(--d)); scroll-margin-top: 80px; }
+  .fin-cta .btn-fin { width: 100%; }
+}
+@media (min-width: 900px) { .mini-rc { display: none; } }
+@media (hover: none) { .keys-btn:not(.rc-btn), .keys-hint, .rc-btn kbd, .cr-btn kbd { display: none; } }
+/* Au doigt : des cibles d'au moins 44 px ; les liens de la ligne « J'y tiens » grandissent sans changer la ligne. */
+@media (pointer: coarse) {
+  .tn, .cr-btn, .express, .cr-ask, .btn-copy, .btn-reset, .keys-close, .mini-rc, .seul summary, .msg-sent, .rc-opts .opt { min-height: 44px; }
+  .btn-reset, .msg-sent, .seul summary { display: inline-flex; align-items: center; }
+  .msg-sent input { width: 22px; height: 22px; }
+  .pill { width: 40px; height: 40px; }
+  .rtenir button { padding: 11px 6px; margin: -11px -2px; }
+}
+
+/* Aide clavier, en surimpression */
+.keys-hint { margin: 14px 0 0; font-size: 14px; color: var(--muted); }
+.keys {
+  position: fixed; inset: 0; z-index: 40;
+  display: grid; place-items: center;
+  padding-left: var(--gl); padding-right: var(--gr); padding-block: 24px;
+  background: var(--voile);
+}
+.keys[hidden] { display: none; }
+.keys-card {
+  width: min(640px, 100%);
+  background: var(--surface); border: 1px solid var(--control); border-radius: calc(var(--r) * 16 / 12);
+  padding: calc(26px * var(--d)) calc(30px * var(--d)) calc(28px * var(--d));
+}
+.keys-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 22px; }
+.keys-top h2 { margin: 0; font-family: var(--title); font-weight: 500; font-size: 28px; line-height: 1.05; letter-spacing: -.012em; }
+.keys-close { background: none; border: 1px solid var(--control); border-radius: calc(var(--r) * 8 / 12); color: var(--text-2); font-size: 14px; padding: 5px 12px; }
+.keys-close:hover { color: var(--text); border-color: var(--text-2); }
+.keys-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 36px; }
+.keys-grid h3 { margin: 0 0 12px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.keys-grid dl { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 14px; align-items: center; }
+.keys-grid dt { display: flex; gap: 4px; justify-content: flex-end; }
+.keys-grid dd { margin: 0; font-size: 15px; color: var(--text); }
+.keys-grid kbd { font-size: 13px; min-width: 26px; padding: 2px 7px; }
+@media (max-width: 560px) { .keys-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: no-preference) {
+  .keys:not([hidden]) { animation: keys-in 160ms ease-out; }
+  @keyframes keys-in { from { opacity: 0; } }
+}
+
+/* Transition de navigation : seuls les blocs visibles reçoivent l'effet, le temps de l'effet. */
+.fx-on { will-change: opacity, filter; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .stamp.pose { animation: none; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- Poussière : un seuil sur du bruit grossit les trous, la vue part en points puis revient. -->
+    <filter id="fx-dust" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="2" seed="11" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0" result="na"/>
+      <feComponentTransfer in="na" result="mask"><feFuncA id="fx-dust-a" type="linear" slope="9" intercept="1"/></feComponentTransfer>
+      <feDisplacementMap id="fx-dust-d" in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feComposite in="d" in2="mask" operator="in" result="c"/>
+      <feGaussianBlur id="fx-dust-b" in="c" stdDeviation="0"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="app">
+  <aside class="rail" aria-label="Sommaire des questions">
+    <div class="rail-head">
+      <div class="count"><span class="count-n" id="count-n"></span><span class="count-l">tranchées</span></div>
+      <div class="segs" id="segs" aria-hidden="true"></div>
+    </div>
+    <nav class="rail-list" id="rail-list"></nav>
+    <div class="rail-foot">
+      <p class="save" data-save role="status">Chargement…</p>
+      <button class="keys-btn" type="button" data-keys><kbd>?</kbd> Raccourcis clavier</button>
+      <button class="keys-btn rc-btn" type="button" data-recadrer data-proprio><kbd>x</kbd> On n'est pas d'accord ? Recadrer</button>
+      <button class="btn-fin" type="button" id="to-fin">Voir le bilan</button>
+    </div>
+  </aside>
+
+  <main id="main">
+    <nav class="mini" aria-label="Avancement">
+      <span class="mini-count" id="mini-count"></span>
+      <div class="pills" id="pills"></div>
+      <button class="mini-rc" type="button" data-recadrer data-proprio>Recadrer</button>
+    </nav>
+    <div id="stage">
+      <div class="rc-banner" id="rc-banner" data-proprio tabindex="-1" role="status" aria-live="polite" hidden></div>
+      <header class="top" id="top"></header>
+      <div id="questions"></div>
+      <section class="fin" id="fin" tabindex="-1" aria-labelledby="fin-h">
+        <h2 id="fin-h">Avant de rendre</h2>
+        <p class="fin-lead" id="fin-lead"></p>
+        <div class="recap" id="recap"></div>
+        <div class="field big autre">
+          <label class="field-l" for="autre">Autre chose ? <small>tout ce que le quiz ne demande pas</small></label>
+          <textarea id="autre" class="big" rows="3" placeholder="Une idée, un oubli, une remarque sur le quiz lui-même."></textarea>
+        </div>
+        <div class="fin-cta">
+          <button class="btn-fin" type="button" id="finish">C'est bon, j'ai fini</button>
+          <p class="done" id="done" role="status" aria-live="polite"></p>
+          <p class="save" data-save></p>
+        </div>
+        <section class="msgs" id="msgs" aria-labelledby="msgs-h" data-proprio hidden>
+          <h3 id="msgs-h">Messages à envoyer</h3>
+          <p class="msgs-lead" id="msgs-lead"></p>
+          <div class="msg-list" id="msg-list"></div>
+        </section>
+        <section class="msgs fait" id="fait" aria-labelledby="fait-h" data-proprio hidden>
+          <h3 id="fait-h">Ce que j'en ai fait</h3>
+          <p class="msgs-lead" id="fait-lead" role="status" aria-live="polite"></p>
+          <div id="fait-corps"></div>
+          <div class="appro" id="appro" hidden>
+            <h4>Approfondir</h4>
+            <p class="appro-lead">Un tour de plus, au même lien, sur ce qui reste ouvert ou sur ce que tu veux creuser.</p>
+            <label class="field-l" for="appro-texte">Sur quoi ? <small>facultatif</small></label>
+            <textarea id="appro-texte" rows="2" placeholder="Par exemple : la reprise des anciennes données, ou un choix que je n'ai pas tranché comme tu voulais."></textarea>
+            <div class="msg-actions">
+              <button class="btn-copy" type="button" id="appro-go">Approfondir</button>
+              <span class="msg-state" id="appro-state" role="status" aria-live="polite"></span>
+            </div>
+          </div>
+        </section>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="keys" id="keys" role="dialog" aria-modal="true" aria-labelledby="keys-h" hidden>
+  <div class="keys-card">
+    <div class="keys-top">
+      <h2 id="keys-h">Raccourcis</h2>
+      <button class="keys-close" type="button" id="keys-close">Fermer</button>
+    </div>
+    <div class="keys-grid">
+      <section>
+        <h3>Répondre</h3>
+        <dl>
+          <dt><kbd>a</kbd><kbd>b</kbd><kbd>c</kbd></dt><dd>Choisir une option</dd>
+          <dt><kbd>r</kbd></dt><dd>Prendre ma reco</dd>
+          <dt><kbd>n</kbd></dt><dd>Écrire une nuance</dd>
+          <dt><kbd>t</kbd></dt><dd>J'y tiens / peu importe</dd>
+          <dt><kbd>q</kbd></dt><dd>Creuser avec Claude</dd>
+          <dt><kbd>Échap</kbd></dt><dd>Sortir du champ</dd>
+          <dt data-proprio><kbd>x</kbd></dt><dd data-proprio>Recadrer le quiz</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>Se déplacer</h3>
+        <dl>
+          <dt><kbd>j</kbd></dt><dd>Question suivante</dd>
+          <dt><kbd>k</kbd></dt><dd>Question précédente</dd>
+          <dt><kbd>v</kbd></dt><dd>Voir le bilan</dd>
+          <dt><kbd>?</kbd></dt><dd>Afficher cette aide</dd>
+        </dl>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="keys" id="rc" role="dialog" aria-modal="true" aria-labelledby="rc-h" hidden>
+  <div class="keys-card rc-card">
+    <div class="keys-top">
+      <h2 id="rc-h">Recadrer le quiz</h2>
+      <button class="keys-close" type="button" id="rc-close">Fermer</button>
+    </div>
+    <p class="rc-lead" id="rc-lead"></p>
+    <p class="rc-l" id="rc-raisons-l">Ce qui cloche <small>facultatif, plusieurs possibles</small></p>
+    <div class="opts rc-opts" id="rc-raisons" role="group" aria-labelledby="rc-raisons-l"></div>
+    <label class="field-l" for="rc-texte">Explique-moi <small>ce que j'ai mal compris, ce qu'il faut changer</small></label>
+    <textarea id="rc-texte" rows="3" placeholder="Par exemple : la vraie question, c'est X ; Y est déjà tranché ; je veux surtout parler de Z."></textarea>
+    <div id="rc-portee-box">
+      <p class="rc-l" id="rc-portee-l">Ensuite</p>
+      <div class="opts rc-opts" id="rc-portee" role="radiogroup" aria-labelledby="rc-portee-l"></div>
+    </div>
+    <div class="rc-actions">
+      <button class="btn-fin" type="button" id="rc-go">Recadrer</button>
+      <span class="msg-state" id="rc-state" role="status" aria-live="polite"></span>
+    </div>
+  </div>
+</div>
+
+<script id="quiz-data" type="application/json">__DATA__</script>
+<script>
+// Données : { nom, eyebrow?, titre, intro?, seul?: [texte], tour?, questions: [{ id, groupe?, titre, contexte?, image?,
+//   type: "choix" | "multi" | "texte", cadrage?, delegable?, options?: [{ k, texte, reco? }],
+//   si?: {id: clé | [clés]}, bloquant?, prediction?: clé | [clés] }],
+//   messages?: [{ id, pour, ou?, pourquoi?, format: "slack" | "markdown" | "texte", texte, lien? }], messages_apres?,
+//   recadre?: { le, resume }, precedent?: { tour, resume }, contexte?: texte de fond pour Creuse } ; chaque question peut aussi avoir fond?.
+// Enregistrement : document reponses/<tour> = { reponses: {id: clé | [clés] | texte}, notes: {id: texte}, autre, termine, finiLe?, majLe, tour,
+//   messages?: {id: {texte?, base?, statut?, raison?}}, recadrages?: [{ le, a, raisons, texte, portee, annule? }],
+//   tenir?: {id: "fort" | "souple"}, masquees?: [id], approfondir?: { le, texte }, creuse?: {id: [{ q, r, le }]}, uid? }.
+// À plusieurs : un participant (pas propriétaire) écrit avis/<son id> = { uid, majLe, tours: { <tour>: mêmes champs sans
+// messages, recadrages, approfondir ni uid } } (son id, jamais son nom : la règle avis/{self} lui réserve ce document).
+// Le propriétaire met son uid dans reponses/<tour>.
+// Claude écrit messages/<tour> = { liste: [message] } après « C'est bon », recadrage/<tour> = { fait: le } après un recadrage,
+// et bilan/<tour> = { le, resume, decisions?: [{id, texte}], toi?: [{id, texte}], fichiers?: [texte], suite?: [texte] } une fois appliqué.
+(function () {
+  "use strict";
+  // Le saut vers la première question vide ne doit pas être annulé par la position gardée par le navigateur.
+  try { if ("scrollRestoration" in history) history.scrollRestoration = "manual"; } catch (err) {}
+  var QUIZ = JSON.parse(document.getElementById("quiz-data").textContent);
+  var TOUR = QUIZ.tour || "t1";
+  var LETTERS = "abcdefghi";
+  var RM = window.matchMedia("(prefers-reduced-motion: reduce)");
+  var NATIVE_FIT = !!(window.CSS && CSS.supports && CSS.supports("field-sizing", "content"));
+  function $(id) { return document.getElementById(id); }
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      var v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k === "class") el.className = v;
+      else if (k === "text") el.textContent = v;
+      else if (k.slice(0, 2) === "on") el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (var i = 2; i < arguments.length; i++) {
+      var c = arguments[i];
+      if (c == null || c === false) continue;
+      el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    }
+    return el;
+  }
+
+  /* ---------- Modèle ---------- */
+  // Question de cadrage (première question, cadrage: true) : Claude y résume ce qu'il a compris, les options sont fixes.
+  // « Pas tout à fait » ouvre la nuance, « Non » ouvre le recadrage.
+  var CADRAGE = [
+    { k: "a", texte: "Oui, c'est ça" },
+    { k: "b", texte: "Pas tout à fait : je précise dans la nuance", preciser: true },
+    { k: "c", texte: "Non, on n'est pas sur la même longueur d'onde : recadrer", recadre: true }
+  ];
+  var QS = QUIZ.questions.map(function (q) {
+    var type = q.cadrage ? "choix" : q.type || "choix";
+    var opts = q.cadrage ? CADRAGE.slice() : (q.options || []).map(function (o) { return { k: o.k, texte: o.texte, reco: !!o.reco }; });
+    if (type === "choix" && !q.cadrage && q.delegable !== false) opts.push({ k: "toi", texte: "À toi de voir", toi: true });
+    // si : {id: [clés]}, toutes les conditions doivent tenir. prediction : jamais montrée avant « C'est bon ».
+    var si = null;
+    if (q.si && typeof q.si === "object" && !q.cadrage) {
+      si = {};
+      Object.keys(q.si).forEach(function (id) { var w = q.si[id]; si[id] = Array.isArray(w) ? w.slice() : [w]; });
+    }
+    var pred = type === "multi" ? (Array.isArray(q.prediction) && q.prediction.length ? q.prediction.slice() : null)
+      : type === "choix" && !q.cadrage && typeof q.prediction === "string" ? q.prediction : null;
+    return {
+      id: q.id, groupe: q.groupe || "", titre: q.titre, contexte: q.contexte, image: q.image, type: type, opts: opts, cadrage: !!q.cadrage,
+      recos: opts.filter(function (o) { return o.reco; }).map(function (o) { return o.k; }),
+      si: si, bloquant: q.bloquant === true, prediction: pred, masq: false, vu: true,
+      fond: typeof q.fond === "string" ? q.fond : ""
+    };
+  });
+  var PAR_ID = {};
+  QS.forEach(function (q) { PAR_ID[q.id] = q; });
+  var CONDITIONNEL = QS.some(function (q) { return q.si; });
+  var state = { reponses: {}, notes: {}, autre: "", termine: false, finiLe: null, messages: {}, recadrages: [], tenir: {}, approfondir: null, creuse: {} };
+  var touched = false;
+
+  function valeur(q) { return valeurDe(q, state.reponses); }
+  // Valeur valide d'une question dans un jeu de réponses (le sien, ou celui d'un avis).
+  function valeurDe(q, reps) {
+    var r = reps[q.id];
+    if (q.type === "choix") return q.opts.some(function (o) { return o.k === r; }) ? r : null;
+    if (q.type === "multi") {
+      var ks = Array.isArray(r) ? r.filter(function (k) { return q.opts.some(function (o) { return o.k === k; }); }) : [];
+      return ks.length ? ks : null;
+    }
+    return typeof r === "string" && r.trim() ? r : null;
+  }
+  function statut(q) {
+    var v = valeur(q);
+    if (v == null) return "vide";
+    if (q.type === "texte") return "fait";
+    if (v === "toi") return "toi";
+    if (!q.recos.length) return "fait";
+    if (q.type === "choix") return q.recos.indexOf(v) >= 0 ? "reco" : "ecart";
+    return v.length === q.recos.length && v.every(function (k) { return q.recos.indexOf(k) >= 0; }) ? "reco" : "ecart";
+  }
+  function tampon(q, s) {
+    if (s === "reco") return "Reco";
+    if (s === "ecart") return "Écart";
+    if (s === "toi") return "À toi";
+    if (s !== "fait") return "";
+    if (q.cadrage) return { a: "Cadré", b: "À préciser", c: MOI.invite ? "Pas d'accord" : "À recadrer" }[valeur(q)] || "Choisi";
+    if (q.type === "multi") { var n = valeur(q).length; return n + (n > 1 ? " choisies" : " choisie"); }
+    return q.type === "texte" ? "Répondu" : "Choisi";
+  }
+  var TAG = { vide: "Vide", reco: "Reco", ecart: "Écart", toi: "À toi", fait: "Répondu" };
+  var INK = { vide: "var(--line)", reco: "var(--sun)", ecart: "var(--rasp)", toi: "var(--lilac)", fait: "var(--sky)" };
+  var TYPE_HINT = { choix: "Une réponse", multi: "Plusieurs réponses possibles", texte: "Réponse libre" };
+
+  // Masquée : une condition « si » ne tient pas (ou vise une question elle-même masquée). La réponse reste
+  // stockée mais ne compte nulle part. Les conditions ne visent que des questions précédentes : un passage suffit.
+  function calcMasques() {
+    QS.forEach(function (q) {
+      q.masq = !!q.si && Object.keys(q.si).some(function (id) {
+        var src = PAR_ID[id];
+        if (!src || src === q) return false;
+        if (src.masq) return true;
+        var v = valeur(src), want = q.si[id];
+        if (v == null) return true;
+        return Array.isArray(v) ? !v.some(function (k) { return want.indexOf(k) >= 0; }) : want.indexOf(v) < 0;
+      });
+    });
+  }
+  function actives() { return QS.filter(function (q) { return !q.masq; }); }
+  function estVide(q) { return statut(q) === "vide"; }
+  // Mode express : il faut au moins une bloquante et une autre parmi les questions actives.
+  // La question de cadrage reste toujours visible : elle conditionne tout le reste.
+  function essentielle(q) { return q.bloquant || q.cadrage; }
+  function expressDispo() {
+    var a = actives();
+    return a.some(function (q) { return q.bloquant; }) && a.some(function (q) { return !essentielle(q); });
+  }
+  // « J'y tiens / Peu importe » : sur un choix ou un multi répondu, ni délégué ni cadrage.
+  function tenable(q) { var v = valeur(q); return !!q.tenirBox && v != null && v !== "toi"; }
+  function niveau(q) { var n = state.tenir[q.id]; return n === "fort" || n === "souple" ? n : null; }
+  // Prédiction comptée : question active, répondue, pas déléguée ; un multi doit tomber sur le même ensemble.
+  function predite(q) { var v = valeur(q); return q.prediction != null && !q.masq && v != null && v !== "toi"; }
+  function predJuste(q) {
+    var v = valeur(q), p = q.prediction;
+    if (!Array.isArray(p)) return v === p;
+    return v.length === p.length && p.every(function (k) { return v.indexOf(k) >= 0; });
+  }
+
+  /* ---------- Creuse : demander à Claude depuis la page ---------- */
+  // Capacité sample : chaque appel part du compte Claude de la personne qui regarde, sur un geste explicite.
+  // Historique dans reponses/<tour>.creuse = {id: [{q, r, le}]} (5 derniers, r tronqué), réaffiché au chargement.
+  // Sans sample (null, refus), pas de bouton ; un historique déjà là reste lisible. Ne rouvre pas le quiz.
+  var sample = null, sampleOk = false, creuseTouched = false;
+  // CREUSE_TOTAL : plafond de tout l'historique (caractères), pour que le document reste loin des 256 Kio.
+  var CREUSE_MAX = 5, CREUSE_R = 2000, CREUSE_TOTAL = 60000;
+  var DEMANDES = {
+    options: [
+      { l: "Explique-moi les options", p: "Explique-moi chaque option en une ou deux phrases : ce qu'elle implique concrètement, et quand c'est le bon choix." },
+      { l: "Quel risque concret ?", p: "Quel est le risque concret de chaque option (ou de ma réponse actuelle si j'en ai une) ? Donne un exemple de ce qui pourrait mal tourner." },
+      { l: "Propose une autre option", p: "Propose une autre option que celles listées, avec ce qu'elle change, ou dis franchement s'il n'y en a pas de sérieuse." }
+    ],
+    texte: [
+      { l: "Explique-moi ce qu'on attend", p: "Explique-moi ce que cette question cherche à trancher et ce qu'une bonne réponse doit contenir." },
+      { l: "Quel risque concret ?", p: "Quel est le risque concret si je réponds mal ou trop vite ici ? Donne un exemple." },
+      { l: "Propose une réponse", p: "Propose une réponse plausible, en disant sur quelles hypothèses elle repose." }
+    ]
+  };
+  // Codes qui coupent la fonction pour cette vue (jamais redemandé), et messages pour ceux qui laissent réessayer.
+  var COUPE = { not_granted: 1, sampling_disabled: 1, not_declared: 1, capability_disabled: 1, capability_removed: 1 };
+  var ERR_SAMPLE = {
+    rate_limited: "Trop de demandes d'un coup, ou ta limite d'usage Claude est atteinte : réessaie dans un moment.",
+    session_expired: "Ta session Claude a expiré : reconnecte-toi, puis réessaie.",
+    prompt_too_large: "Demande trop longue : raccourcis-la.",
+    empty_completion: "Pas de réponse : reformule, ou demande moins à la fois."
+  };
+  function coupe(s, n) { return s.length > n ? s.slice(0, n) + "…" : s; }
+  // Texte brut : pas de tiret cadratin (en début de ligne il devient une puce, ailleurs une virgule), ni gras ni titres.
+  function propre(t) {
+    return String(t).replace(/^([ \t]*)\u2014[ \t]*/gm, "$1- ").replace(/[ \t]*\u2014[ \t]*/g, ", ")
+      .replace(/\*\*/g, "").replace(/^#{1,6}[ \t]+/gm, "");
+  }
+  function creuseListe(q) {
+    var l = state.creuse[q.id];
+    return (Array.isArray(l) ? l : []).filter(function (e) { return e && typeof e.q === "string" && typeof e.r === "string"; });
+  }
+  // Au-delà de CREUSE_TOTAL, les échanges les plus anciens partent, toutes questions confondues (nouvelles listes :
+  // celles lues en base sont gelées).
+  function elaguer() {
+    var tout = [], total = 0;
+    QS.forEach(function (q) { creuseListe(q).forEach(function (e) { tout.push({ id: q.id, e: e }); total += e.q.length + e.r.length + 40; }); });
+    if (total <= CREUSE_TOTAL) return false;
+    tout.sort(function (a, b) { return String(a.e.le) < String(b.e.le) ? -1 : String(a.e.le) > String(b.e.le) ? 1 : 0; });
+    var parti = [];
+    for (var i = 0; i < tout.length && total > CREUSE_TOTAL; i++) { parti.push(tout[i].e); total -= tout[i].e.q.length + tout[i].e.r.length + 40; }
+    var cs = {};
+    QS.forEach(function (q) {
+      var l = creuseListe(q).filter(function (e) { return parti.indexOf(e) < 0; });
+      if (l.length) cs[q.id] = l;
+    });
+    state.creuse = cs;
+    return true;
+  }
+  function consigne(q, demande) {
+    var L = ["Tu aides la personne qui remplit ce quiz de décision, préparé par Claude Code pendant une session de travail. " +
+      "Réponds en français, court (150 mots au plus, sauf si la demande exige plus), concret, avec des exemples tirés du contexte. " +
+      "Texte simple : paragraphes courts, au besoin une liste à tirets, ni titres, ni tableau, ni gras. N'utilise jamais le tiret cadratin. " +
+      "Tu n'as pas accès au code ni au projet : tu ne connais que ce qui suit. S'il te manque une information pour répondre, dis-le et dis ce qu'il faudrait vérifier, sans inventer."];
+    L.push("", "Quiz : " + QUIZ.titre);
+    if (QUIZ.intro) L.push(QUIZ.intro);
+    if (Array.isArray(QUIZ.seul) && QUIZ.seul.length) L.push("Déjà réglé sans la personne : " + QUIZ.seul.join(" ; "));
+    if (typeof QUIZ.contexte === "string" && QUIZ.contexte.trim()) L.push("", "Contexte de fond :", coupe(QUIZ.contexte, 12000));
+    L.push("", "Question " + q.id + " : " + q.titre);
+    if (q.contexte) L.push(q.contexte);
+    if (q.fond) L.push("", "Détails sur cette question :", coupe(q.fond, 8000));
+    if (q.type === "texte") L.push("", "Réponse libre attendue.");
+    else {
+      L.push("", q.type === "multi" ? "Options (plusieurs possibles) :" : "Options (une seule) :");
+      q.opts.forEach(function (o) { if (!o.toi) L.push("- " + o.k + ") " + o.texte + (o.reco ? " (recommandée par Claude Code)" : "")); });
+      if (q.opts.some(function (o) { return o.toi; })) L.push("La personne peut aussi répondre « À toi de voir » pour laisser Claude Code trancher.");
+    }
+    var v = valeur(q), note = state.notes[q.id];
+    L.push("", "Réponse actuelle : " + (v == null ? "pas encore de réponse" : q.type === "texte" ? coupe(v, 2000) : v === "toi" ? "« À toi de voir »" : choixTexte(q)));
+    if (typeof note === "string" && note.trim()) L.push("Nuance ajoutée : " + coupe(note.trim(), 2000));
+    var hist = creuseListe(q);
+    if (hist.length) {
+      L.push("", "Échanges précédents sur cette question :");
+      hist.forEach(function (e) { L.push("Demande : " + e.q, "Réponse : " + e.r, ""); });
+    }
+    L.push("", "Demande : " + demande);
+    return L.join("\n");
+  }
+  function entree(e) {
+    return h("div", { class: "cr-e" }, h("p", { class: "cr-q", text: e.q }), h("div", { class: "cr-a", text: e.r }));
+  }
+  function creuseUI(q) {
+    var c = q.cr = { busy: false, ctl: null, cle: null };
+    var pid = "cr-" + q.id;
+    c.btnL = h("span", { text: "Creuse" });
+    c.btn = h("button", { type: "button", class: "cr-btn", "aria-expanded": "false", "aria-controls": pid, hidden: true, onclick: function () { creuseOuvrir(q); } },
+      c.btnL, h("kbd", { "aria-hidden": "true", text: "q" }));
+    c.lead = h("p", { class: "cr-lead" });
+    c.hist = h("div", { class: "cr-hist" });
+    c.liveQ = h("p", { class: "cr-q" });
+    c.liveA = h("div", { class: "cr-a" });
+    c.live = h("div", { class: "cr-e cr-live", hidden: true }, c.liveQ, c.liveA);
+    c.asks = (q.type === "texte" ? DEMANDES.texte : DEMANDES.options).map(function (d) {
+      return h("button", { type: "button", class: "cr-ask", onclick: function (e) { creuser(q, d.l, d.p, e.currentTarget); } }, d.l);
+    });
+    c.ta = h("textarea", { id: pid + "-t", rows: "1", placeholder: "Ta question sur ce point." });
+    c.go = h("button", { type: "button", class: "btn-copy", onclick: function () {
+      var t = c.ta.value.trim();
+      if (t) creuser(q, coupe(t, 500), t, c.ta); else c.ta.focus();
+    } }, "Demander");
+    c.stop = h("button", { type: "button", class: "btn-reset", hidden: true, onclick: function () { if (c.ctl) c.ctl.abort(); } }, "Arrêter");
+    c.etat = h("span", { class: "msg-state", role: "status", "aria-live": "polite" });
+    c.zone = h("div", { class: "cr-zone" },
+      h("div", { class: "cr-asks", role: "group", "aria-label": "Demandes rapides" }, c.asks[0], c.asks[1], c.asks[2]),
+      h("label", { class: "field-l", for: pid + "-t" }, "Autre chose ?", h("small", { text: "ta propre question" })), c.ta);
+    c.panel = h("section", { class: "cr", id: pid, tabindex: "-1", "aria-label": "Creuser " + q.id + " avec Claude", hidden: true },
+      h("h4", { text: "Creuser avec Claude" }), c.lead, c.hist, c.live, c.zone, h("div", { class: "msg-actions" }, c.go, c.stop, c.etat));
+    c.ta.addEventListener("input", function () { fit(c.ta); });
+    c.ta.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); c.go.click(); }
+    });
+    q.art.appendChild(h("div", null, c.btn));
+    q.art.appendChild(c.panel);
+  }
+  // Mise à jour sur place ; l'historique n'est reconstruit que s'il a changé.
+  function creusePaint(q) {
+    var c = q.cr;
+    if (!c) return;
+    var list = creuseListe(q), cle = JSON.stringify(list), n = list.length;
+    if (cle !== c.cle) {
+      c.cle = cle;
+      c.hist.textContent = "";
+      if (n > 1) {
+        var old = h("details", { class: "cr-old" }, h("summary", { text: (n - 1) + (n > 2 ? " échanges avant" : " échange avant") }));
+        list.slice(0, -1).forEach(function (e) { old.appendChild(entree(e)); });
+        c.hist.appendChild(old);
+      }
+      if (n) c.hist.appendChild(entree(list[n - 1]));
+    }
+    c.hist.hidden = !n;
+    // Coupée en cours de route : le panneau ouvert garde son bouton (et son message) jusqu'à ce qu'on le ferme.
+    c.btn.hidden = !sampleOk && !n && c.panel.hidden;
+    c.btnL.textContent = n ? "Creuse (" + n + ")" : "Creuse";
+    c.lead.textContent = sampleOk ? "Claude répond à partir de ce que dit le quiz, sans accès au code. La demande passe par ton compte Claude."
+      : n ? "Ce que tu as déjà creusé ici." : "";
+    c.lead.hidden = !c.lead.textContent;
+    c.zone.hidden = c.go.hidden = !sampleOk;
+    c.asks.forEach(function (b) { b.disabled = c.busy; });
+    c.go.disabled = c.busy;
+    c.stop.hidden = !c.busy;
+  }
+  function creuseOuvrir(q, ouvrir) {
+    var c = q.cr;
+    if (!c || c.btn.hidden) return;
+    var on = ouvrir != null ? ouvrir : c.panel.hidden;
+    if (!on && c.panel.contains(document.activeElement)) q.art.focus({ preventScroll: true });
+    c.panel.hidden = !on;
+    c.btn.setAttribute("aria-expanded", on ? "true" : "false");
+    setCur(QS.indexOf(q));
+    creusePaint(q);
+    if (on) {
+      // Un message d'un appel précédent ne survit pas à une réouverture (sauf appel en cours).
+      if (!c.busy) dire(c, "");
+      fit(c.ta);
+      (sampleOk && !c.busy ? c.asks[0] : c.panel).focus({ preventScroll: true });
+      if (c.panel.getBoundingClientRect().bottom > window.innerHeight) c.panel.scrollIntoView({ block: "nearest", behavior: RM.matches ? "auto" : "smooth" });
+    }
+  }
+  function dire(c, txt, err) { c.etat.textContent = txt; c.etat.classList.toggle("err", !!err); }
+  // depuis : ce qui a lancé la demande (demande rapide ou champ), qui retrouve le focus à la fin. Sur mobile, viser
+  // le champ ouvrirait le clavier par-dessus la réponse.
+  function creuser(q, label, demande, depuis) {
+    var c = q.cr;
+    if (!sample || !sampleOk || c.busy) return;
+    var ctl = c.ctl = new AbortController(), recu = false;
+    c.busy = true;
+    c.liveQ.textContent = label;
+    c.liveA.textContent = "Je réfléchis…";
+    c.liveA.classList.add("attente");
+    c.live.hidden = false;
+    // La ligne d'état (role=status) annonce l'attente puis l'arrivée ; la réponse elle-même n'est pas live.
+    dire(c, "Claude réfléchit…");
+    creusePaint(q);
+    // Le bouton cliqué vient d'être désactivé : le focus passe sur « Arrêter ».
+    if (c.panel.contains(document.activeElement) && document.activeElement.disabled === true) c.stop.focus({ preventScroll: true });
+    var fin = function () {
+      if (c.ctl !== ctl) return;
+      var avaitFocus = c.panel.contains(document.activeElement);
+      c.ctl = null; c.busy = false;
+      creusePaint(q);
+      if (avaitFocus && !c.panel.contains(document.activeElement))
+        (sampleOk ? (depuis && c.panel.contains(depuis) ? depuis : c.asks[0]) : c.panel).focus({ preventScroll: true });
+    };
+    // Promise.resolve : un appel qui lèverait quand même finit en rejet comme les autres.
+    Promise.resolve().then(function () {
+      return sample(consigne(q, demande), { signal: ctl.signal, onText: function (u) {
+        recu = true;
+        c.liveA.classList.remove("attente");
+        c.liveA.textContent = propre(u.text);
+      } });
+    }).then(function (res) {
+      var r = propre(res.text).trim(), list = creuseListe(q).slice();
+      list.push({ q: label, r: coupe(r, CREUSE_R), le: new Date().toISOString() });
+      state.creuse[q.id] = list.slice(-CREUSE_MAX);
+      if (elaguer()) QS.forEach(creusePaint);
+      creuseTouched = true;
+      save();
+      c.live.hidden = true;
+      if (c.ta.value.trim() === demande) { c.ta.value = ""; fit(c.ta); }
+      dire(c, res.truncated ? "Réponse coupée : demande moins à la fois." : "Réponse reçue, juste au-dessus.", false);
+    }, function (e) {
+      var code = (e && e.code) || "upstream_error";
+      var part = e && typeof e.text === "string" && e.text.trim() ? propre(e.text) : "";
+      if (part) { c.liveA.classList.remove("attente"); c.liveA.textContent = part; } else c.live.hidden = true;
+      if (COUPE[code]) {
+        sampleOk = false;
+        QS.forEach(creusePaint);
+        dire(c, "Claude n'est pas disponible pour cette page : Creuse est coupé ici.", true);
+      } else if (code === "cancelled") dire(c, part ? "Arrêté. Ce début de réponse n'est pas gardé." : "Arrêté.");
+      else if (code === "refused") { c.live.hidden = true; dire(c, "Claude n'a pas voulu répondre à cette demande : reformule-la.", true); }
+      else dire(c, ERR_SAMPLE[code] || (recu ? "Réponse interrompue, pas gardée : réessaie dans un moment." : "Ça n'a pas abouti : réessaie dans un moment."), true);
+    }).then(fin, fin);
+  }
+  var sampleReady = (window.claude && window.claude.use
+    ? Promise.resolve().then(function () { return window.claude.use("sample"); }) : Promise.resolve(null))
+    .then(function (s) { return typeof s === "function" ? s : null; }, function () { return null; });
+
+  /* ---------- Construction, une seule fois ---------- */
+  var top = $("top");
+  if (QUIZ.eyebrow) top.appendChild(h("p", { class: "eyebrow", text: QUIZ.eyebrow }));
+  // Tour suivant après « Approfondir » : une ligne rappelle d'où l'on vient.
+  var PREC = QUIZ.precedent;
+  if (PREC && typeof PREC.tour === "string" && typeof PREC.resume === "string" && PREC.resume)
+    top.appendChild(h("p", { class: "precedent" }, "Suite du tour ", h("b", { text: PREC.tour }), " : " + PREC.resume));
+  // Chez un participant : à qui il répond (rempli quand le rôle est connu).
+  var avisTete = h("p", { class: "avis-tete", role: "status", hidden: true });
+  top.appendChild(avisTete);
+  top.appendChild(h("h1", { text: QUIZ.titre }));
+  if (QUIZ.intro) top.appendChild(h("p", { class: "intro", text: QUIZ.intro }));
+  if (Array.isArray(QUIZ.seul) && QUIZ.seul.length) {
+    var ul = h("ul");
+    QUIZ.seul.forEach(function (t) { ul.appendChild(h("li", { text: t })); });
+    top.appendChild(h("details", { class: "seul" }, h("summary", { text: "Déjà réglé sans toi (" + QUIZ.seul.length + ")" }), ul));
+  }
+  // Bascule « Juste les bloquantes » : vue seulement, rien en base, mémorisée dans ce navigateur.
+  var express = false;
+  try { express = localStorage.getItem("quizz-express") === "1"; } catch (err) {}
+  var expressL = h("span");
+  var expressBtn = h("button", { type: "button", class: "express", "aria-pressed": "false", hidden: true, onclick: function () { basculerExpress(); } },
+    h("span", { class: "express-sw", "aria-hidden": "true" }), expressL);
+  top.appendChild(h("div", null, expressBtn));
+  top.appendChild(h("p", { class: "keys-hint" }, "Au clavier : appuie sur ", h("kbd", { text: "?" }), " pour voir les raccourcis."));
+
+  var qWrap = $("questions"), railList = $("rail-list"), segs = $("segs"), pills = $("pills");
+  var groupEl = null, groupName = null, railGroup = null;
+  QS.forEach(function (q, i) {
+    if (!groupEl || q.groupe !== groupName) {
+      groupName = q.groupe;
+      groupEl = h("section", { class: "group", "aria-label": q.groupe || null }, q.groupe ? h("p", { class: "group-h", text: q.groupe }) : null);
+      qWrap.appendChild(groupEl);
+      railGroup = q.groupe ? h("p", { class: "rail-group", text: q.groupe }) : null;
+      if (railGroup) railList.appendChild(railGroup);
+    }
+    q.groupEl = groupEl; q.railGroup = railGroup;
+    var titleId = "t-" + q.id;
+    q.art = h("article", { class: "q", id: "q-" + q.id, tabindex: "-1", "data-type": q.type, "data-state": "vide", "aria-labelledby": titleId });
+    q.slot = h("div", { class: "slot", "aria-live": "polite" });
+    q.art.appendChild(h("div", { class: "q-head" },
+      h("p", { style: "margin:0" }, h("span", { class: "q-num", text: q.id }), h("span", { class: "q-type", text: q.cadrage ? "On part du bon pied ?" : TYPE_HINT[q.type] }),
+        q.bloquant ? h("span", { class: "bloq", text: "Bloquant" }) : null),
+      q.slot));
+    q.art.appendChild(h("h2", { class: "q-title", id: titleId, text: q.titre }));
+    if (q.contexte) q.art.appendChild(h("p", { class: "q-ctx", text: q.contexte }));
+    if (q.image) q.art.appendChild(h("img", { class: "q-img", src: q.image, alt: q.titre, loading: "lazy" }));
+
+    if (q.type === "texte") {
+      q.answer = field(q, "r-", "Ta réponse", null, "Écris ce qui te vient.", true, function (v) { state.reponses[q.id] = v; edited(q); });
+      q.avisEl = q.art.appendChild(h("p", { class: "avis-q", hidden: true }));
+    } else {
+      var multi = q.type === "multi";
+      q.box = h("div", { class: "opts", role: multi ? "group" : "radiogroup", "aria-labelledby": titleId });
+      q.btns = q.opts.map(function (o, j) {
+        var b = h("button", { type: "button", id: "o-" + q.id + "-" + o.k, class: "opt" + (o.toi ? " toi" : "") + (o.reco ? " has-reco" : ""),
+            role: multi ? "checkbox" : "radio", "aria-checked": "false", onclick: function () { choose(q, o.k); } },
+          h("span", { class: "key", "aria-hidden": "true", text: LETTERS[j] }),
+          h("span", { class: "otext", text: o.texte }),
+          o.reco ? h("span", { class: "reco-tag", text: "Ma reco" }) : null);
+        q.box.appendChild(b);
+        return b;
+      });
+      q.art.appendChild(q.box);
+      // Ce que les autres ont répondu ici (chez le propriétaire seulement).
+      q.avisEl = q.art.appendChild(h("p", { class: "avis-q", hidden: true }));
+      if (!q.cadrage) {
+        q.tenirBtns = {
+          fort: h("button", { type: "button", class: "tn", "aria-pressed": "false", onclick: function () { tenir(q, "fort"); } }, "J'y tiens"),
+          souple: h("button", { type: "button", class: "tn", "aria-pressed": "false", onclick: function () { tenir(q, "souple"); } }, "Peu importe")
+        };
+        q.tenirBox = h("div", { class: "tenir", role: "group", "aria-label": "Ce choix compte pour toi ?", hidden: true }, q.tenirBtns.fort, q.tenirBtns.souple);
+        q.art.appendChild(q.tenirBox);
+      }
+      q.note = field(q, "n-", "Une nuance ?", "facultatif", "Une condition, une précision, ou rien.", false, function (v) { state.notes[q.id] = v; edited(q); });
+    }
+    creuseUI(q);  // cadrage compris : q doit marcher partout, et « tu entends quoi par X ? » y a sa place
+    q.art.addEventListener("focusin", function () { setCur(i); });
+    q.art.addEventListener("pointerdown", function () { setCur(i); });
+    groupEl.appendChild(q.art);
+
+    q.tag = h("span", { class: "tag", text: TAG.vide });
+    q.ri = h("button", { type: "button", class: "ri", "data-state": "vide", onclick: function () { go(i); } },
+      h("span", { class: "ri-num", text: q.id }), h("span", { class: "ri-title", title: q.titre, text: q.titre }),
+      h("span", { class: "ri-meta" }, q.tag, q.bloquant ? h("span", { class: "ri-bloq", text: "Bloquant" }) : null));
+    railList.appendChild(q.ri);
+    q.seg = h("span", { class: "seg" });
+    segs.appendChild(q.seg);
+    q.pill = h("button", { type: "button", class: "pill", "data-state": "vide", onclick: function () { go(i); } }, String(i + 1));
+    pills.appendChild(q.pill);
+  });
+
+  function field(q, prefix, label, small, ph, big, onval) {
+    var id = prefix + q.id;
+    var ta = h("textarea", { id: id, class: big ? "big" : null, rows: big ? "4" : "1", placeholder: ph });
+    q.art.appendChild(h("div", { class: "field" + (big ? " big" : "") },
+      h("label", { class: "field-l", for: id }, label, small ? h("small", { text: small }) : null), ta));
+    ta.addEventListener("input", function () { fit(ta); onval(ta.value); });
+    return ta;
+  }
+  function fit(ta) {
+    if (NATIVE_FIT || !ta) return;
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight + 3, window.innerHeight * 0.5) + "px";
+  }
+
+  /* ---------- Mise à jour, sans reconstruire ---------- */
+  function paint(q, pop) {
+    var s = statut(q), v = valeur(q);
+    q.art.setAttribute("data-state", s);
+    if (q.btns) {
+      q.btns.forEach(function (b, j) {
+        var k = q.opts[j].k;
+        b.setAttribute("aria-checked", (Array.isArray(v) ? v.indexOf(k) >= 0 : v === k) ? "true" : "false");
+      });
+      q.box.classList.toggle("has-choice", v != null);
+    }
+    if (q.tenirBox) {
+      var nv = niveau(q);
+      q.tenirBox.hidden = !tenable(q);
+      q.tenirBtns.fort.setAttribute("aria-pressed", nv === "fort" ? "true" : "false");
+      q.tenirBtns.souple.setAttribute("aria-pressed", nv === "souple" ? "true" : "false");
+    }
+    var txt = tampon(q, s);
+    if (txt !== q.stampText) {
+      q.stampText = txt;
+      q.slot.textContent = "";
+      if (txt) {
+        var st = h("span", { class: "stamp", text: txt });
+        st.style.setProperty("--ink", INK[s]);
+        if (pop && !RM.matches) st.classList.add("pose");
+        q.slot.appendChild(st);
+      }
+    }
+    var tag = q.type === "multi" && s === "fait" ? txt : TAG[s];
+    q.ri.setAttribute("data-state", s); q.tag.textContent = tag;
+    q.seg.style.background = INK[s];
+    q.pill.setAttribute("data-state", s);
+    q.pill.setAttribute("aria-label", q.id + " : " + tag.toLowerCase());
+    avisPaint(q);
+  }
+  function fill(q) {
+    if (q.answer && document.activeElement !== q.answer) q.answer.value = state.reponses[q.id] || "";
+    if (q.note && document.activeElement !== q.note) q.note.value = state.notes[q.id] || "";
+    fit(q.answer); fit(q.note);
+    creusePaint(q);
+  }
+
+  // Ce que le bouton de fin et la relance disent : tout, avec des vides, ou juste les bloquantes.
+  function bilanFin() {
+    var act = actives(), vides = act.filter(estVide);
+    // Le cadrage compte avec les bloquantes : il reste visible en mode express et conditionne le reste.
+    var bloq = act.filter(function (q) { return q.bloquant; });
+    if (bloq.length) bloq = act.filter(essentielle);
+    var bloqVides = bloq.filter(estVide);
+    return { act: act, vides: vides.length, bloq: bloq.length, bloqVides: bloqVides.length,
+      partiel: bloq.length > 0 && !bloqVides.length && vides.length > 0 };
+  }
+  // Reconstruire un bloc sans perdre le focus : l'élément actif est retrouvé par sa clé data-k (sinon le bilan le reprend).
+  function garderFocus(box, refaire) {
+    var a = document.activeElement, k = a && a !== box && box.contains(a) ? a.getAttribute("data-k") : null;
+    var avait = a && a !== box && box.contains(a);
+    refaire();
+    if (!avait || box.contains(document.activeElement)) return;
+    var el = k ? Array.prototype.filter.call(box.querySelectorAll("[data-k]"), function (x) { return x.getAttribute("data-k") === k; })[0] : null;
+    (el || $("fin")).focus({ preventScroll: true });
+  }
+  // Le bilan de Claude porte-t-il sur le dernier « C'est bon » ? (Sans date lisible, on le croit.)
+  function bilanAJour() {
+    if (!bilan) return false;
+    var b = Date.parse(bilan.le), f = Date.parse(state.finiLe);
+    return !state.termine || isNaN(b) || isNaN(f) || b >= f;
+  }
+  function recap() {
+    majVue();
+    var vus = QS.filter(function (q) { return q.vu; });
+    var nv = vus.filter(function (q) { return !estVide(q); }).length;
+    var html = nv + '<span class="of">/' + vus.length + "</span>";
+    $("count-n").innerHTML = html;
+    $("mini-count").innerHTML = html;
+    var f = bilanFin(), N = f.act.length, n = N - f.vides;
+    // En mode express, le compteur du haut ne voit que les bloquantes : la ligne dit combien sont masquées.
+    var ex = expressOn(), cachees = ex ? f.act.filter(function (q) { return !essentielle(q); }).length : 0;
+    $("fin-lead").textContent = (n === N
+      ? "Tout est tranché. Relis si tu veux, puis rends."
+      : n + " sur " + N + " tranchées" + (cachees ? " (" + cachees + " masquées par « Juste les bloquantes »)" : "") + ". Tu peux rendre même s'il en reste.") +
+      (!f.bloq || n === N ? ""
+        : f.bloqVides ? " Bloquantes : " + f.bloqVides + " encore " + (f.bloqVides > 1 ? "vides" : "vide") + " sur " + f.bloq + "."
+        : " Les bloquantes sont toutes tranchées.");
+    var box = $("recap");
+    garderFocus(box, function () { recapBlocs(box, f); });
+    var reessai = MOI.invite && finEnBase === false && !offline;
+    $("finish").textContent = reessai ? "Réessayer d'enregistrer" : state.termine ? "C'est noté"
+      : f.partiel && MOI.connu && !MOI.invite ? "Envoyer les bloquantes, le reste attend"
+      : f.vides ? "C'est bon, même avec " + f.vides + (f.vides > 1 ? " vides" : " vide") : "C'est bon, j'ai fini";
+    $("finish").disabled = state.termine && !reessai;
+    majDone(f);
+    msgsLead();
+    renderFait();
+  }
+  // Ce que dit la ligne sous le bouton de fin ; aussi rappelée quand le bilan de Claude arrive.
+  function majDone(f) {
+    f = f || bilanFin();
+    var qui = MOI.proprio || "la personne qui a lancé le quiz";
+    // finEnvoi : entre le clic et la fin de l'envoi, rien n'est encore tranché, on ne dit ni « envoyé » ni « reviens ».
+    $("done").textContent = !state.termine ? ""
+      : MOI.invite ? (offline ? "Rien n'est enregistré ici : ce quiz est en lecture seule pour toi."
+        : finEnvoi ? "Enregistrement de ton avis…"
+        : finEnBase === false ? "Pas enregistré : ton avis reste sur cette page. Réessaie dans un moment."
+        : sent ? "C'est envoyé : Claude a ton avis, et " + qui + " le verra à côté de ses réponses."
+        : "C'est enregistré : " + qui + " verra ton avis à côté de ses réponses.")
+      : finEnvoi ? "Envoi à Claude…"
+      : bilanAJour() ? "C'est appliqué : ce que j'en ai fait est juste en dessous."
+      : sent ? (f.partiel ? "C'est envoyé, j'applique les bloquantes, le reste attend." : "C'est envoyé, je relis tes réponses et j'applique.")
+      : f.partiel ? "Reviens dans le terminal et dis-moi « fini », j'applique les bloquantes." : "Reviens dans le terminal et dis-moi « fini », je relis tout.";
+  }
+  function recapBlocs(box, f) {
+    box.textContent = "";
+    var pred = predictions();
+    if (pred) box.appendChild(pred);
+    box.appendChild(block("Écarts avec mes recos", "rasp", "ecart", "Aucun écart, tu suis mes recos partout où tu as répondu.", function (q) {
+      return "Tu as pris : " + choixTexte(q);
+    }));
+    box.appendChild(block("Tu me laisses décider", "lilac", "toi", "Rien de délégué."));
+    // En mode express, les vides non bloquantes attendent : on les compte sans les lister.
+    var ex = expressOn(), attente = ex ? f.act.filter(function (q) { return !essentielle(q) && estVide(q); }).length : 0;
+    var vb = block(ex ? "Bloquantes encore vides" : "Encore vide", null, "vide", ex ? "Plus aucune bloquante vide." : "Plus rien de vide.", null,
+      ex ? essentielle : null);
+    if (attente) vb.appendChild(h("p", { class: "rnote", text: "Et " + attente + " non " + (attente > 1 ? "bloquantes masquées" : "bloquante masquée") + " : elles attendent." }));
+    box.appendChild(vb);
+    var tn = tenirLigne();
+    if (tn) box.appendChild(tn);
+    var av = avisBloc();
+    if (av) box.appendChild(av);
+  }
+  function textes(q, ks) {
+    return ks.map(function (k) { var o = q.opts.filter(function (x) { return x.k === k; })[0]; return o ? o.texte : k; }).join(" + ");
+  }
+  function choixTexte(q) {
+    var v = valeur(q);
+    return textes(q, Array.isArray(v) ? v : [v]);
+  }
+  var TENIR = { fort: "J'y tiens", souple: "Peu importe" };
+  function block(title, ink, s, none, sub, filtre) {
+    var list = QS.filter(function (q) { return !q.masq && statut(q) === s && (!filtre || filtre(q)); });
+    var sec = h("div", null, h("h3", { class: ink ? "" : "vide-h" }, title, h("span", { class: "n", text: String(list.length) })));
+    if (ink) sec.style.setProperty("--ink", "var(--" + ink + ")");
+    if (!list.length) { sec.appendChild(h("p", { class: "rnone", text: none })); return sec; }
+    sec.appendChild(lignes(list, sub, title));
+    return sec;
+  }
+  // cle : nom du bloc, pour retrouver le focus après reconstruction (data-k).
+  function lignes(list, sub, cle) {
+    var ul = h("ul", { class: "rl" });
+    list.forEach(function (q) {
+      var nv = tenable(q) ? niveau(q) : null;
+      ul.appendChild(h("li", null, h("button", { type: "button", class: "rrow", "data-k": cle + ":" + q.id, onclick: function () { go(QS.indexOf(q)); } },
+        h("span", { class: "rrow-num", text: q.id }),
+        h("span", { class: "rrow-t" }, q.titre,
+          q.bloquant ? h("span", { class: "rrow-mark bq", text: "Bloquant" }) : null,
+          nv ? h("span", { class: "rrow-mark", text: TENIR[nv] }) : null),
+        sub ? h("span", { class: "rrow-sub", text: sub(q) }) : null)));
+    });
+    return ul;
+  }
+  // Une ligne discrète pour tout ce que l'utilisateur a marqué, même ce que les blocs ne listent pas.
+  function tenirLigne() {
+    var par = { fort: [], souple: [] };
+    QS.forEach(function (q) { var nv = !q.masq && tenable(q) ? niveau(q) : null; if (nv) par[nv].push(q); });
+    if (!par.fort.length && !par.souple.length) return null;
+    var p = h("p", { class: "rtenir" });
+    ["fort", "souple"].forEach(function (nv) {
+      if (!par[nv].length) return;
+      if (p.childNodes.length) p.appendChild(document.createTextNode(" ; "));
+      p.appendChild(document.createTextNode(TENIR[nv] + " : "));
+      par[nv].forEach(function (q, i) {
+        if (i) p.appendChild(document.createTextNode(", "));
+        p.appendChild(h("button", { type: "button", "data-k": "tenir:" + nv + ":" + q.id, "aria-label": q.id + ", " + q.titre, onclick: function () { go(QS.indexOf(q)); } }, q.id));
+      });
+    });
+    p.appendChild(document.createTextNode("."));
+    return p;
+  }
+  // Après « C'est bon » seulement : combien de prédictions justes, et les ratées.
+  function predictions() {
+    if (!state.termine || MOI.invite) return null;
+    var list = QS.filter(predite);
+    if (!list.length) return null;
+    var rates = list.filter(function (q) { return !predJuste(q); });
+    var sec = h("div", null, h("h3", { class: "vide-h" }, "J'avais prédit", h("span", { class: "n", text: (list.length - rates.length) + " sur " + list.length })));
+    if (!rates.length) sec.appendChild(h("p", { class: "rnone", text: "Tout juste, je te lisais bien." }));
+    else sec.appendChild(lignes(rates, function (q) {
+      return "Je pensais : " + textes(q, Array.isArray(q.prediction) ? q.prediction : [q.prediction]) + ". Tu as pris : " + choixTexte(q) + ".";
+    }, "pred"));
+    return sec;
+  }
+
+  /* ---------- Vue : questions masquées et mode express ---------- */
+  var vueInit = false;
+  function expressOn() { return express && expressDispo(); }
+  function proche(i) {
+    for (var j = i; j < QS.length; j++) if (QS[j].vu) return j;
+    for (j = i - 1; j >= 0; j--) if (QS[j].vu) return j;
+    return -1;
+  }
+  // Met à jour sur place ce qui se voit. La question courante garde sa place à l'écran (pas de saut quand
+  // une question apparaît ou disparaît au-dessus), et une question qui apparaît arrive en fondu.
+  function majVue(ancre) {
+    calcMasques();
+    var on = expressOn(), change = [];
+    QS.forEach(function (q) {
+      var vu = !q.masq && (essentielle(q) || !on);
+      if (vu !== q.vu || !vueInit) change.push({ q: q, vu: vu });
+    });
+    if (change.length) {
+      var c = QS[cur], a = ancre || (c && c.vu && !c.masq && (essentielle(c) || !on) ? c.art : null);
+      var avant = a && vueInit && !busy ? a.getBoundingClientRect().top : null;
+      change.forEach(function (x) {
+        var q = x.q, apparait = x.vu && !q.vu;
+        q.vu = x.vu;
+        q.art.hidden = q.ri.hidden = q.pill.hidden = q.seg.hidden = !x.vu;
+        if (apparait && vueInit && !RM.matches) { q.art.classList.remove("q-in"); void q.art.offsetWidth; q.art.classList.add("q-in"); }
+      });
+      var n = 0;
+      QS.forEach(function (q) {
+        if (q.vu) q.pill.textContent = String(++n);
+        var g = QS.some(function (o) { return o.groupEl === q.groupEl && o.vu; });
+        q.groupEl.hidden = !g;
+        if (q.railGroup) q.railGroup.hidden = !g;
+      });
+      if (avant != null && a.offsetParent !== null) {
+        var d = a.getBoundingClientRect().top - avant;
+        if (Math.abs(d) > 1) window.scrollBy({ top: d, behavior: "instant" });
+      }
+    }
+    var nb = actives().filter(function (q) { return q.bloquant; }).length;
+    expressBtn.hidden = !expressDispo();
+    expressBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    expressL.textContent = "Juste les bloquantes (" + nb + ")";
+    vueInit = true;
+    if (QS[cur] && !QS[cur].vu) { var j = proche(cur); if (j >= 0) setCur(j); }
+  }
+  function basculerExpress(force) {
+    express = force != null ? force : !expressOn();
+    try { localStorage.setItem("quizz-express", express ? "1" : "0"); } catch (err) {}
+    // La bascule ne sert d'ancre que si elle est à l'écran ; sinon la question courante garde sa place.
+    var r = expressBtn.getBoundingClientRect();
+    var a = expressBtn.offsetParent !== null && r.bottom > 0 && r.top < window.innerHeight ? expressBtn : null;
+    majVue(a);
+    recap();
+  }
+
+  /* ---------- Gestes ---------- */
+  function choose(q, k) {
+    setCur(QS.indexOf(q));
+    if (q.type === "multi") {
+      var set = (valeur(q) || []).slice(), at = set.indexOf(k);
+      if (at >= 0) set.splice(at, 1); else set.push(k);
+      state.reponses[q.id] = set;
+    } else {
+      // Le « Non » du cadrage peut être abandonné : on garde la réponse d'avant pour la remettre.
+      if (q.cadrage && k === "c" && state.reponses[q.id] !== "c") q.avantNon = state.reponses[q.id];
+      state.reponses[q.id] = k;
+    }
+    paint(q, true); edited(q);
+    var o = q.opts.filter(function (x) { return x.k === k; })[0];
+    if (o && o.preciser && q.note) q.note.focus();
+    if (o && o.recadre) openRc(q);
+  }
+  // Un second clic sur le même bouton retire la marque. null (et pas delete) : au chargement, ce qui a été
+  // touché avant passe devant ce qui était stocké, retrait compris.
+  function tenir(q, nv) {
+    if (!tenable(q)) return;
+    setCur(QS.indexOf(q));
+    state.tenir[q.id] = niveau(q) === nv ? null : nv;
+    paint(q, false); edited(q);
+  }
+  function edited(q) {
+    touched = true;
+    if (q) dernier = q;
+    if (state.termine) { state.termine = false; state.finiLe = null; }
+    if (q && q.type === "texte") paint(q, true);
+    recap(); save();
+  }
+  var autre = $("autre");
+  autre.addEventListener("input", function () { fit(autre); state.autre = autre.value; edited(null); });
+  // « C'est bon » enregistre la fin, puis prévient la session Claude qui a publié le quiz
+  // (commentaire envoyé à Claude). Sans session à l'écoute, il reste « fini » dans le terminal.
+  // finEnvoi : entre le clic sur « C'est bon » et la fin de la relance. finEnBase : le document était-il bien en base ?
+  var sent = false, commentsApi = null, finEnvoi = false, finEnBase = null, finJeton = 0;
+  var commentsReady = window.claude && window.claude.use ? window.claude.use("comments").then(function (c) { commentsApi = c; return c; }, function () { return null; }) : Promise.resolve(null);
+  function reveiller(text, el) {
+    if (!commentsApi) return Promise.resolve(false);
+    return commentsApi.canSendToClaude().then(function (can) {
+      if (can !== "available") return false;
+      return commentsApi.anchorFor(el).then(function (anchor) {
+        return commentsApi.sendToClaude({ anchor: anchor, text: text }).then(function () { return true; });
+      });
+    }).catch(function () { return false; });
+  }
+  // Claude doit trouver le document à jour quand il est relancé : on attend la fin du chargement (qui écrit ce
+  // qui a été fait avant), puis l'enregistrement. fn reçoit true si le document est bien en base.
+  function enregistrerPuis(fn) {
+    return charge.then(function () { return ready && ref ? flush() : false; })
+      .then(function (ok) { return fn(ok === true); }, function () { return fn(false); });
+  }
+  $("finish").addEventListener("click", function () {
+    var jeton = ++finJeton;
+    sent = false; finEnvoi = true; finEnBase = null;
+    state.termine = true; state.finiLe = new Date().toISOString(); touched = true;
+    recap(); save(true);
+    var f = bilanFin(), vides = f.vides;
+    var text = f.partiel
+      ? "Quiz « " + QUIZ.nom + " » rendu pour les bloquantes (tour " + TOUR + ", " + vides + " non " + (vides > 1 ? "bloquantes vides" : "bloquante vide") +
+        ", elles attendent) : relis reponses/" + TOUR + " et applique les bloquantes, le reste attend."
+      : "Quiz « " + QUIZ.nom + " » rempli (tour " + TOUR + (vides ? ", " + vides + " vide" + (vides > 1 ? "s" : "") +
+        (f.bloqVides ? " dont " + f.bloqVides + " bloquante" + (f.bloqVides > 1 ? "s" : "") : "") : "") +
+        ") : relis reponses/" + TOUR + " et applique.";
+    // Le rôle est connu une fois le chargement fini : un participant relance avec son avis, s'il est bien en base.
+    enregistrerPuis(function (enBase) {
+      if (jeton === finJeton) finEnBase = enBase;
+      if (!MOI.invite) return reveiller(text, $("finish"));
+      if (!enBase) return false;
+      return reveiller("Avis de " + (MOI.nom || "quelqu'un") + " sur le quiz « " + QUIZ.nom + " » (tour " + TOUR +
+        (vides ? ", " + vides + " vide" + (vides > 1 ? "s" : "") : "") + ") : relis avis/" + MOI.id + " (champ tours." + TOUR +
+        ") et mets-le à côté de reponses/" + TOUR + ".", $("finish"));
+    }).then(function (ok) {
+      if (jeton !== finJeton) return;
+      sent = ok; finEnvoi = false; recap();
+    });
+  });
+  $("to-fin").addEventListener("click", function () { goFin(); });
+
+  /* ---------- Recadrage ---------- */
+  // « On n'est pas d'accord » : l'utilisateur dit ce qui cloche, la demande va dans reponses/<tour>.recadrages
+  // ({ le, a, raisons, texte, portee: "suite" | "tout", annule? }, la dernière compte) et Claude est relancé.
+  // Il réécrit les questions, republie au même lien avec QUIZ.recadre = { le, resume }, puis écrit
+  // recadrage/<tour> = { fait: le } pour que la page encore ouverte dise de recharger.
+  var RAISONS = ["Pas le bon sujet", "Mauvaises hypothèses de départ", "Trop dans le détail", "Trop vague, pas assez concret", "Déjà décidé, ou pas à moi de trancher"];
+  var FAIT = QUIZ.recadre && typeof QUIZ.recadre.le === "string" ? QUIZ.recadre : null;
+  var rc = $("rc"), rcFrom = null, rcEnvoye = null, rcLive = false, rcPret = null, rcRaisons = [], rcPortee = "suite";
+  var rcVu = null, rcBrouillon = null, rcCadrage = null, dernier = null;
+  try { rcVu = localStorage.getItem("quizz-rc-vu"); } catch (err) {}
+  function enCours() {
+    var d = state.recadrages[state.recadrages.length - 1];
+    return d && !d.annule && !(FAIT && FAIT.le === d.le) ? d : null;
+  }
+  // En cours et pas encore traitée : seule celle-là se modifie. Une demande prête attend le rechargement.
+  function modifiable() { var d = enCours(); return d && rcPret !== d.le ? d : null; }
+  // « Non » au cadrage sans demande derrière ne doit pas rester comme une réponse.
+  function oublierNonCadrage() {
+    if (modifiable()) return;
+    QS.forEach(function (q) {
+      if (!q.cadrage || state.reponses[q.id] !== "c") return;
+      if (q.avantNon) state.reponses[q.id] = q.avantNon; else delete state.reponses[q.id];
+      q.avantNon = null;
+      paint(q, false); edited(q);
+    });
+  }
+  function nRepondues() { return actives().filter(function (q) { return !q.cadrage && statut(q) !== "vide"; }).length; }
+  function rcOpt(role, texte, onclick) {
+    return h("button", { type: "button", class: "opt", role: role, "aria-checked": "false", onclick: onclick },
+      h("span", { class: "key", "aria-hidden": "true" }), h("span", { class: "otext", text: texte }));
+  }
+  var rcBtns = RAISONS.map(function (r) {
+    var b = rcOpt("checkbox", r, function () {
+      var i = rcRaisons.indexOf(r);
+      if (i >= 0) rcRaisons.splice(i, 1); else rcRaisons.push(r);
+      rcPaint();
+    });
+    $("rc-raisons").appendChild(b);
+    return b;
+  });
+  var rcPorteeBtns = {
+    suite: rcOpt("radio", "", function () { rcPortee = "suite"; rcPaint(); }),
+    tout: rcOpt("radio", "Tout reprendre de zéro", function () { rcPortee = "tout"; rcPaint(); })
+  };
+  $("rc-portee").appendChild(rcPorteeBtns.suite);
+  $("rc-portee").appendChild(rcPorteeBtns.tout);
+  function rcPaint() {
+    rcBtns.forEach(function (b, i) { b.setAttribute("aria-checked", rcRaisons.indexOf(RAISONS[i]) >= 0 ? "true" : "false"); });
+    var n = nRepondues();
+    rcPorteeBtns.suite.querySelector(".otext").textContent =
+      "Refaire la suite : je garde " + (n > 1 ? "tes " + n + " réponses" : "ta réponse") + " et je réécris le reste";
+    $("rc-portee-box").hidden = !n;
+    ["suite", "tout"].forEach(function (k) { rcPorteeBtns[k].setAttribute("aria-checked", rcPortee === k ? "true" : "false"); });
+    $("rc-go").disabled = !rcRaisons.length && !$("rc-texte").value.trim();
+  }
+  // Le brouillon survit à une fermeture sans envoi ; il ne repart de la demande stockée que si on change de demande.
+  function openRc(depuisCadrage) {
+    if (!rc.hidden || MOI.invite) return;
+    if (!keys.hidden) closeKeys();
+    rcCadrage = depuisCadrage && depuisCadrage.cadrage ? depuisCadrage : null;
+    var d = modifiable(), cle = d ? d.le : "nouvelle";
+    if (rcBrouillon !== cle) {
+      rcBrouillon = cle;
+      rcRaisons = d && Array.isArray(d.raisons) ? d.raisons.slice() : [];
+      rcPortee = d && d.portee === "tout" ? "tout" : "suite";
+      $("rc-texte").value = d && typeof d.texte === "string" ? d.texte : "";
+    }
+    $("rc-state").textContent = "";
+    $("rc-lead").textContent = d ? "Tu modifies ta demande en cours."
+      : "Dis-moi ce qui cloche, je réécris les questions au même lien. Tes réponses déjà données restent enregistrées.";
+    $("rc-go").textContent = d ? "Mettre à jour" : "Recadrer";
+    rcFrom = document.activeElement;
+    rc.hidden = false;
+    rcPaint(); fit($("rc-texte"));
+    $("rc-texte").focus();
+  }
+  function closeRc(envoye) {
+    rc.hidden = true;
+    if (envoye !== true && rcCadrage) oublierNonCadrage();
+    rcCadrage = null;
+    if (rcFrom && rcFrom !== document.body && rcFrom.focus) rcFrom.focus({ preventScroll: true });
+  }
+  document.querySelectorAll("[data-recadrer]").forEach(function (b) { b.addEventListener("click", function () { openRc(); }); });
+  $("rc-close").addEventListener("click", function () { closeRc(); });
+  rc.addEventListener("click", function (e) { if (e.target === rc) closeRc(); });
+  // Tab reste dans la fenêtre ouverte (aide clavier comprise).
+  function pieger(dlg, e) {
+    var f = Array.prototype.filter.call(dlg.querySelectorAll("button, textarea, input, a[href]"), function (el) {
+      return !el.disabled && el.offsetParent !== null;
+    });
+    if (!f.length) return;
+    var a = f[0], z = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); }
+    else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+  }
+  $("rc-texte").addEventListener("input", function () { fit($("rc-texte")); rcPaint(); });
+  // Une demande modifiée remplace la précédente avec une nouvelle date : si Claude travaillait déjà sur
+  // l'ancienne, elle ne compte plus comme traitée et la nouvelle relance passe derrière.
+  $("rc-go").addEventListener("click", function () {
+    // Ouvert avant que le rôle soit connu : un participant ne recadre pas le quiz du propriétaire.
+    if (MOI.invite) { closeRc(true); return; }
+    var texte = $("rc-texte").value.trim();
+    if (!texte && !rcRaisons.length) return;
+    var d = modifiable(), n = nRepondues();
+    var e = { le: new Date().toISOString(), a: (dernier || QS[cur]).id, raisons: rcRaisons.slice(), texte: texte, portee: n ? rcPortee : "tout" };
+    var list = state.recadrages.slice();
+    if (d) list.pop();
+    list.push(e);
+    state.recadrages = list; touched = true; rcEnvoye = null; rcBrouillon = null;
+    // Les questions vont changer : le quiz n'est plus « rendu ».
+    if (state.termine) { state.termine = false; state.finiLe = null; sent = false; recap(); }
+    closeRc(true); rcBanner(); save(true);
+    travel($("rc-banner"), "start");
+    var text = "Quiz « " + QUIZ.nom + " » à recadrer (tour " + TOUR + ", arrêté à " + e.a + ", " +
+      (e.portee === "tout" ? "tout reprendre" : "refaire la suite") + ") : relis reponses/" + TOUR + ".recadrages." +
+      (e.raisons.length ? " Ce qui cloche : " + e.raisons.join(", ") + "." : "") +
+      (e.texte ? " « " + (e.texte.length > 800 ? e.texte.slice(0, 800) + "…" : e.texte) + " »" : "");
+    // Si l'enregistrement échoue, la relance part quand même : son texte contient toute la demande.
+    enregistrerPuis(function (enBase) {
+      rcEnBase = enBase;
+      return reveiller(enBase ? text : text + " (pas enregistrée dans la page : sers-toi de ce commentaire)", $("top"));
+    }).then(function (ok) {
+      if (enCours() && enCours().le === e.le) { rcEnvoye = ok; rcBanner(); }
+    });
+  });
+  var rcEnBase = true;
+  function retourQuestion() { var q = QS[cur]; if (q) q.art.focus({ preventScroll: true }); }
+  function annulerRc() {
+    var d = modifiable();
+    if (!d) return;
+    var list = state.recadrages.slice();
+    list[list.length - 1] = Object.assign({}, d, { annule: true });
+    state.recadrages = list; touched = true; rcBrouillon = null;
+    save(true);
+    oublierNonCadrage();
+    rcBanner(); retourQuestion();
+  }
+  function rcBanner() {
+    var b = $("rc-banner"), d = enCours();
+    b.textContent = "";
+    if (MOI.invite) { b.hidden = true; return; }
+    if (d) {
+      var pret = rcPret === d.le;
+      b.setAttribute("data-etat", pret ? "pret" : "attente");
+      b.appendChild(h("p", null, h("strong", { text: pret ? "Recadrage prêt. " : "Recadrage demandé. " }),
+        pret ? "Recharge la page pour voir les nouvelles questions."
+        : offline ? "Il n'a pas pu être enregistré ici : recopie ton explication dans le terminal."
+        : rcEnvoye === true && !rcEnBase ? "Pas enregistré dans la page, mais ton explication m'est parvenue : je réécris les questions."
+        : rcEnvoye === false && !rcEnBase ? "Pas enregistré : recopie ton explication dans le terminal."
+        : rcEnvoye === true ? "Je réécris les questions au même lien." + (rcLive ? " Je te préviens ici quand c'est prêt." : " Recharge la page dans un moment.")
+        : rcEnvoye === false ? "Dis-moi « recadré » dans le terminal, je réécris les questions."
+        : "Si rien ne bouge, dis-moi « recadré » dans le terminal."));
+      if (!pret) b.appendChild(h("div", { class: "msg-actions" },
+        h("button", { type: "button", class: "btn-reset", text: "Modifier ma demande", onclick: openRc }),
+        h("button", { type: "button", class: "btn-reset", text: "Annuler la demande", onclick: annulerRc })));
+      b.hidden = false;
+      return;
+    }
+    if (FAIT && FAIT.resume && rcVu !== FAIT.le) {
+      b.setAttribute("data-etat", "fait");
+      b.appendChild(h("p", null, h("strong", { text: "Recadré. " }), FAIT.resume));
+      b.appendChild(h("div", { class: "msg-actions" }, h("button", { type: "button", class: "btn-reset", text: "Compris", onclick: function () {
+        rcVu = FAIT.le;
+        try { localStorage.setItem("quizz-rc-vu", rcVu); } catch (err) {}
+        rcBanner(); retourQuestion();
+      } })));
+      b.hidden = false;
+      return;
+    }
+    b.hidden = true;
+  }
+  function ecouterRecadrage(db) {
+    rcLive = true;
+    db.doc("recadrage/" + TOUR).onSnapshot(function (snap) {
+      var d = snap.exists ? snap.data() : null;
+      rcPret = d && typeof d.fait === "string" ? d.fait : null;
+      rcBanner();
+    }, function () { rcLive = false; rcBanner(); });
+  }
+
+  /* ---------- Messages à envoyer ---------- */
+  // Deux sources : QUIZ.messages (prêts dès l'ouverture) et messages/<tour>, que Claude écrit après « C'est bon »
+  // (même id : la version de Claude gagne). Ce que l'utilisateur en fait va dans reponses/<tour>.messages[id] :
+  // { base, texte } quand il retouche (base = la proposition retouchée, pour que Claude compare), statut
+  // "envoye" | "ecarte", raison d'un écart. Rien de tout ça ne rouvre le quiz. Pas d'envoi depuis la page : un
+  // message posté par le connecteur Slack porte « Sent using @Claude » chez le destinataire.
+  var FORMATS = { slack: "Slack", markdown: "Markdown", texte: "Texte" };
+  var msgsFixes = Array.isArray(QUIZ.messages) ? QUIZ.messages : [];
+  var msgsClaude = [], msgsAucun = "", cards = {}, msgsLive = false, msgsTouched = false;
+  function msgValide(m) {
+    return m && typeof m.id === "string" && m.id && typeof m.pour === "string" && typeof m.texte === "string" && m.texte;
+  }
+  function msgsTous() {
+    var ids = {};
+    msgsClaude.forEach(function (m) { ids[m.id] = true; });
+    return msgsFixes.filter(function (m) { return msgValide(m) && !ids[m.id]; }).concat(msgsClaude);
+  }
+  // Copie avant modification : ce qui vient de la base est gelé.
+  function suivi(id, patch) {
+    var e = Object.assign({}, state.messages[id] || {}, patch);
+    Object.keys(e).forEach(function (k) { if (e[k] == null || e[k] === "") delete e[k]; });
+    if ("texte" in e) { if (!("base" in e)) e.base = cards[id] ? cards[id].m.texte : ""; } else delete e.base;
+    if (Object.keys(e).length) state.messages[id] = e; else delete state.messages[id];
+    msgsTouched = true;
+    save();
+    return e;
+  }
+  function msgsLead() {
+    var n = msgsTous().length;
+    $("msgs").hidden = !n && !QUIZ.messages_apres;
+    $("msgs-lead").textContent = n ? "Retouche si besoin, copie, colle. Écarte ceux que tu ne veux pas envoyer."
+      : msgsAucun ? msgsAucun
+      : state.termine && finEnvoi ? "Envoi à Claude…"
+      : state.termine && sent && msgsLive ? "Je les rédige à partir de tes réponses, ils arrivent ici dans un instant."
+      : state.termine ? "Dis-moi « fini » dans le terminal, je rédige les messages et ils arrivent ici."
+      : "Après « C'est bon », je rédige ici les messages qui découlent de tes réponses.";
+  }
+  function renderMsgs() {
+    var list = msgsTous(), keep = {};
+    list.forEach(function (m) {
+      keep[m.id] = true;
+      var c = cards[m.id];
+      if (!c) { c = cards[m.id] = carte(); $("msg-list").appendChild(c.el); }
+      c.m = m;
+      peindre(c);
+    });
+    Object.keys(cards).forEach(function (id) {
+      if (!keep[id] && !cards[id].el.contains(document.activeElement)) { cards[id].el.remove(); delete cards[id]; }
+    });
+    msgsLead();
+  }
+  // Une retouche ne vaut que pour la proposition sur laquelle elle a été faite : si Claude a réécrit le message,
+  // la carte montre la nouvelle version (la retouche reste stockée pour qu'il la lise). Un champ en cours de
+  // saisie n'est jamais écrasé.
+  function peindre(c) {
+    var m = c.m, e = state.messages[m.id] || {}, ecarte = e.statut === "ecarte";
+    c.to.textContent = m.pour;
+    c.where.textContent = m.ou || ""; c.where.hidden = !m.ou;
+    c.fmt.textContent = FORMATS[m.format] || FORMATS.texte;
+    c.why.textContent = m.pourquoi || ""; c.why.hidden = !m.pourquoi;
+    var lien = typeof m.lien === "string" && /^https?:\/\//.test(m.lien) ? m.lien : null;
+    c.link.hidden = !lien; if (lien) c.link.href = lien;
+    var retouche = "texte" in e && e.base === m.texte;
+    if (document.activeElement !== c.ta) { c.ta.value = retouche ? e.texte : m.texte; fit(c.ta); }
+    c.reset.hidden = !retouche;
+    c.el.setAttribute("data-statut", e.statut || "");
+    c.body.hidden = ecarte;
+    c.ecarte.hidden = !ecarte;
+    if (document.activeElement !== c.raison) c.raison.value = e.raison || "";
+    c.sent.checked = e.statut === "envoye";
+  }
+  function carte() {
+    var c = {};
+    c.to = h("span", { class: "msg-to" });
+    c.where = h("span", { class: "msg-where" });
+    c.fmt = h("span", { class: "msg-fmt" });
+    c.why = h("p", { class: "msg-why" });
+    c.ta = h("textarea", { rows: "4", "aria-label": "Texte du message" });
+    c.link = h("a", { class: "msg-link", target: "_blank", rel: "noopener noreferrer", text: "Ouvrir le fil" });
+    c.reset = h("button", { type: "button", class: "btn-reset", text: "Revenir à ma version" });
+    c.sent = h("input", { type: "checkbox" });
+    c.state = h("span", { class: "msg-state", role: "status", "aria-live": "polite" });
+    var copy = h("button", { type: "button", class: "btn-copy", text: "Copier" });
+    var ecarter = h("button", { type: "button", class: "btn-reset", text: "Ne pas envoyer" });
+    var reprendre = h("button", { type: "button", class: "btn-reset", text: "Reprendre" });
+    c.raison = h("textarea", { rows: "1", placeholder: "Pourquoi ? (facultatif, ça m'aide à mieux viser)", "aria-label": "Pourquoi tu l'écartes" });
+    c.body = h("div", null, c.why, c.ta,
+      h("div", { class: "msg-actions" }, copy, h("label", { class: "msg-sent" }, c.sent, "Envoyé"),
+        c.link, c.reset, ecarter, c.state));
+    c.ecarte = h("div", { class: "msg-ecarte" },
+      h("div", { class: "msg-actions" }, h("span", { class: "msg-off", text: "Écarté, je ne le propose plus" }), reprendre), c.raison);
+    c.el = h("article", { class: "msg" }, h("div", { class: "msg-head" }, c.to, c.where, c.fmt), c.body, c.ecarte);
+
+    c.ta.addEventListener("input", function () {
+      fit(c.ta);
+      suivi(c.m.id, c.ta.value === c.m.texte ? { texte: null } : { texte: c.ta.value, base: c.m.texte });
+      c.reset.hidden = c.ta.value === c.m.texte;
+    });
+    c.reset.addEventListener("click", function () {
+      suivi(c.m.id, { texte: null });
+      c.ta.value = c.m.texte; fit(c.ta); c.reset.hidden = true; c.ta.focus();
+    });
+    c.sent.addEventListener("change", function () {
+      suivi(c.m.id, { statut: c.sent.checked ? "envoye" : null }); peindre(c);
+    });
+    ecarter.addEventListener("click", function () { suivi(c.m.id, { statut: "ecarte" }); peindre(c); reprendre.focus(); });
+    reprendre.addEventListener("click", function () { suivi(c.m.id, { statut: null }); peindre(c); c.ta.focus(); });
+    c.raison.addEventListener("input", function () { fit(c.raison); suivi(c.m.id, { raison: c.raison.value }); });
+    function dire(txt, err) {
+      c.state.textContent = txt; c.state.classList.toggle("err", !!err);
+      clearTimeout(c.clear);
+      if (!err) c.clear = setTimeout(function () { c.state.textContent = ""; }, 4000);
+    }
+    copy.addEventListener("click", function () {
+      copier(c.ta, c.m.format).then(function (ok) {
+        dire(ok ? (c.m.format === "slack" ? "Copié, mise en forme Slack comprise" : "Copié") : "Copie bloquée : le texte est sélectionné, fais Cmd+C", !ok);
+        if (!ok) { c.ta.focus(); c.ta.select(); }
+      });
+    });
+    return c;
+  }
+
+  // Copie : texte brut toujours ; pour Slack, une version HTML en plus, que le composeur Slack colle mise en forme.
+  // Événement copy d'abord (synchrone, marche dans une iframe), API presse-papiers en secours.
+  function copier(ta, format) {
+    var texte = ta.value, html = format === "slack" ? mdHtml(texte) : null, ok = false;
+    function onCopy(e) {
+      e.clipboardData.setData("text/plain", texte);
+      if (html) e.clipboardData.setData("text/html", html);
+      e.preventDefault(); ok = true;
+    }
+    var a = ta.selectionStart, b = ta.selectionEnd, prev = document.activeElement;
+    document.addEventListener("copy", onCopy);
+    try { ta.select(); document.execCommand("copy"); } catch (err) { ok = false; }
+    document.removeEventListener("copy", onCopy);
+    try { ta.setSelectionRange(a, b); } catch (err) {}
+    if (prev !== ta) {
+      if (prev && prev !== document.body && prev.focus) prev.focus({ preventScroll: true });
+      if (document.activeElement === ta) ta.blur();
+    }
+    if (ok) return Promise.resolve(true);
+    if (!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem)) return Promise.resolve(false);
+    var item = { "text/plain": new Blob([texte], { type: "text/plain" }) };
+    if (html) item["text/html"] = new Blob([html], { type: "text/html" });
+    return navigator.clipboard.write([new ClipboardItem(item)]).then(function () { return true; }, function () { return false; });
+  }
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  // Markdown courant (celui que l'envoi Slack attend) : **gras**, *italique* ou _italique_, ~~barré~~, `code`,
+  // ```bloc```, [texte](url), listes - * 1., citations >. Chaque morceau converti est mis de côté avant
+  // l'échappement, pour que les bornes voient le texte brut.
+  function mdInline(s) {
+    var mis = [];
+    function garde(html) { mis.push(html); return "\u0000" + (mis.length - 1) + "\u0000"; }
+    function url(u) { return /^https?:\/\//.test(u) ? u : null; }
+    s = s.replace(/`([^`\n]+)`/g, function (_, c) { return garde("<code>" + esc(c) + "</code>"); });
+    s = s.replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, function (all, l, u) {
+      return url(u) ? garde('<a href="' + esc(u) + '">' + esc(l) + "</a>") : all;
+    });
+    s = s.replace(/https?:\/\/[^\s<>]*[^\s<>.,;:!?)\]"'»]/g, function (u) { return garde('<a href="' + esc(u) + '">' + esc(u) + "</a>"); });
+    s = s.replace(/\*\*(?=\S)([^*\n]*?\S)\*\*/g, function (_, t) { return garde("<b>" + esc(t) + "</b>"); });
+    s = s.replace(/~~(?=\S)([^~\n]*?\S)~~/g, function (_, t) { return garde("<s>" + esc(t) + "</s>"); });
+    s = s.replace(/(^|[^\w*])\*(?=\S)([^*\n]*?\S)\*(?![\w*])/g, function (_, p, t) { return p + garde("<i>" + esc(t) + "</i>"); });
+    s = s.replace(/(^|[^\w])_(?=\S)([^_\n]*?\S)_(?!\w)/g, function (_, p, t) { return p + garde("<i>" + esc(t) + "</i>"); });
+    s = esc(s);
+    return s.replace(/\u0000(\d+)\u0000/g, function (_, i) { return mis[+i]; });
+  }
+  function mdHtml(texte) {
+    var lines = texte.replace(/\r\n?/g, "\n").split("\n"), out = [], i = 0;
+    var PUCE = /^\s*[-*•]\s+/, NUM = /^\s*\d+[.)]\s+/, CIT = /^>\s?/, BLOC = /^```/;
+    function special(l) { return !l.trim() || PUCE.test(l) || NUM.test(l) || CIT.test(l) || BLOC.test(l); }
+    function suite(re) {
+      var items = [];
+      while (i < lines.length && re.test(lines[i])) { items.push(mdInline(lines[i].replace(re, ""))); i++; }
+      return items;
+    }
+    while (i < lines.length) {
+      var l = lines[i];
+      if (BLOC.test(l)) {
+        var buf = [], one = /^```(.*)```\s*$/.exec(l);
+        if (one) { out.push("<pre>" + esc(one[1]) + "</pre>"); i++; continue; }
+        i++;
+        while (i < lines.length && !/^```\s*$/.test(lines[i])) buf.push(lines[i++]);
+        if (i < lines.length) i++;
+        out.push("<pre>" + esc(buf.join("\n")) + "</pre>");
+      } else if (PUCE.test(l)) out.push("<ul>" + suite(PUCE).map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ul>");
+      else if (NUM.test(l)) out.push("<ol>" + suite(NUM).map(function (x) { return "<li>" + x + "</li>"; }).join("") + "</ol>");
+      else if (CIT.test(l)) out.push("<blockquote>" + suite(CIT).join("<br>") + "</blockquote>");
+      else if (!l.trim()) i++;
+      else {
+        var para = [];
+        while (i < lines.length && !special(lines[i])) para.push(mdInline(lines[i++]));
+        out.push("<p>" + para.join("<br>") + "</p>");
+      }
+    }
+    return out.join("");
+  }
+
+  /* ---------- Ce que j'en ai fait, approfondir ---------- */
+  // Claude écrit bilan/<tour> une fois les réponses appliquées. La section vient sous les messages ; avant, après
+  // « C'est bon », une ligne d'attente dit la même chose que la relance. Avec un bilan, « Approfondir » écrit
+  // reponses/<tour>.approfondir = { le, texte } et relance Claude, qui publie le tour suivant au même lien.
+  var bilan = null, bilanCle = "", bilanLive = false, approEnvoye = null, approEnBase = true, approEnvoi = false;
+  var approTa = $("appro-texte"), approBtn = $("appro-go");
+  function bilanValide(d) {
+    if (!d || typeof d.resume !== "string" || !d.resume.trim()) return null;
+    function items(l) {
+      return (Array.isArray(l) ? l : []).filter(function (x) { return x && typeof x.texte === "string" && x.texte; })
+        .map(function (x) { return { id: typeof x.id === "string" ? x.id : "", texte: x.texte }; });
+    }
+    function chaines(l) { return (Array.isArray(l) ? l : []).filter(function (x) { return typeof x === "string" && x; }); }
+    return { le: typeof d.le === "string" ? d.le : "", resume: d.resume, decisions: items(d.decisions), toi: items(d.toi),
+      fichiers: chaines(d.fichiers), suite: chaines(d.suite) };
+  }
+  function quand(iso) {
+    var t = new Date(iso);
+    if (!iso || isNaN(t)) return "";
+    return t.toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) + " à " + t.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  }
+  // Un id qui vise une question visible devient un lien vers elle ; sinon la ligne reste simple.
+  function faitLignes(titre, list, ink) {
+    var part = h("div", { class: "fait-part" }, h("h4", { text: titre }));
+    var ul = h("ul", { class: "rl" });
+    list.forEach(function (x) {
+      var q = PAR_ID[x.id], lien = q && !q.masq;
+      var num = h("span", { class: "rrow-num", text: x.id }), t = h("span", { class: "rrow-t", text: x.texte });
+      ul.appendChild(h("li", null, lien
+        ? h("button", { type: "button", class: "rrow", "data-k": "fait:" + titre + ":" + x.id, "aria-label": x.id + ", " + q.titre + " : " + x.texte, onclick: function () { go(QS.indexOf(q)); } }, num, t)
+        : h("div", { class: "rrow fixe" }, num, t)));
+    });
+    part.appendChild(ul);
+    if (ink) part.style.setProperty("--ink", "var(--" + ink + ")");
+    return part;
+  }
+  // Reconstruit seulement si le bilan change, ou si une question qu'il cite apparaît ou disparaît (lien ou ligne simple).
+  function renderFait() {
+    var cle = JSON.stringify(bilan) + "|" + (bilan ? bilan.decisions.concat(bilan.toi).map(function (x) {
+      return PAR_ID[x.id] && !PAR_ID[x.id].masq ? 1 : 0; }).join("") : "");
+    if (cle === bilanCle) return faitEtat();
+    bilanCle = cle;
+    var c = $("fait-corps");
+    garderFocus(c, function () { faitCorps(c); });
+    faitEtat();
+  }
+  function faitCorps(c) {
+    c.textContent = "";
+    if (bilan) {
+      c.appendChild(h("p", { class: "fait-resume", text: bilan.resume }));
+      if (bilan.decisions.length) c.appendChild(faitLignes("Appliqué", bilan.decisions, "sky"));
+      if (bilan.toi.length) c.appendChild(faitLignes("Tranché pour toi", bilan.toi, "lilac"));
+      if (bilan.fichiers.length) {
+        var fl = h("ul", { class: "fait-files" });
+        bilan.fichiers.forEach(function (f) {
+          fl.appendChild(h("li", null, /^https?:\/\/\S+$/.test(f)
+            ? h("a", { href: f, target: "_blank", rel: "noopener noreferrer", text: f }) : h("code", { text: f })));
+        });
+        c.appendChild(h("div", { class: "fait-part" }, h("h4", { text: "Fichiers touchés" }), fl));
+      }
+      if (bilan.suite.length) {
+        var sl = h("ul", { class: "fait-suite" });
+        bilan.suite.forEach(function (s) { sl.appendChild(h("li", { text: s })); });
+        c.appendChild(h("div", { class: "fait-part" }, h("h4", { text: "Ce qui reste à faire" }), sl));
+      }
+    }
+  }
+  // Mise à jour sur place, à chaque recap : visibilité, ligne d'attente, état de la demande.
+  function faitEtat() {
+    var sec = $("fait");
+    sec.hidden = !bilan && !state.termine;
+    if (sec.hidden) return;
+    var partiel = bilanFin().partiel;
+    // Un bilan antérieur au dernier « C'est bon » reste lisible, mais la ligne d'attente passe devant.
+    var perime = !!bilan && !bilanAJour();
+    var attente = finEnvoi ? "Envoi à Claude…"
+      : sent && bilanLive ? (partiel ? "J'applique les bloquantes. Ce que j'en ai fait arrive ici, avec ce qui reste."
+        : "J'applique tes réponses. Ce que j'en ai fait arrive ici, avec ce qui reste.")
+      : sent ? "J'applique tes réponses. Recharge la page plus tard pour voir ce que j'en ai fait."
+      : "Dis-moi « fini » dans le terminal : une fois appliqué, ce que j'en ai fait arrive ici.";
+    $("fait-lead").textContent = !bilan ? attente
+      : perime ? attente + (quand(bilan.le) ? " En attendant, le bilan du " + quand(bilan.le) + " :" : " En attendant, le bilan précédent :")
+      : quand(bilan.le) ? "Appliqué le " + quand(bilan.le) + "." : "";
+    $("fait-lead").hidden = !$("fait-lead").textContent;
+    $("appro").hidden = !bilan || perime;
+    if (!bilan || perime) return;
+    var d = state.approfondir, texte = approTa.value.trim();
+    approBtn.textContent = d ? "Mettre à jour la demande" : "Approfondir";
+    approBtn.disabled = !!d && texte === (d.texte || "");
+    $("appro-state").classList.toggle("err", !!d && approEnvoye === false && !approEnBase);
+    $("appro-state").textContent = !d ? ""
+      : approEnvoye === true && !approEnBase ? "Demandé. Pas enregistré dans la page, mais ta demande m'est parvenue."
+      : approEnvoye === false && !approEnBase ? "Pas enregistré : recopie ta demande dans le terminal."
+      : approEnvoye === true ? "Demandé. Je prépare le tour suivant au même lien, recharge la page dans un moment."
+      : approEnvoye === false ? "Demandé. Dis-moi « approfondir » dans le terminal, je prépare le tour suivant."
+      : approEnvoi ? "Demandé."
+      : "Demandé. Si rien ne bouge, dis-moi « approfondir » dans le terminal.";
+  }
+  approTa.addEventListener("input", function () { fit(approTa); faitEtat(); });
+  approBtn.addEventListener("click", function () {
+    var texte = approTa.value.trim(), e = { le: new Date().toISOString(), texte: texte };
+    // Ne rouvre pas le quiz : la demande vit à côté des réponses.
+    state.approfondir = e; touched = true; approEnvoye = null; approEnBase = true; approEnvoi = true;
+    faitEtat(); save(true);
+    var text = "Quiz « " + QUIZ.nom + " » à approfondir (tour " + TOUR + ") : " +
+      (texte ? "« " + (texte.length > 800 ? texte.slice(0, 800) + "…" : texte) + " »" : "rien de précis, creuse ce qui reste ouvert") +
+      ". Relis reponses/" + TOUR + ".approfondir et bilan/" + TOUR + ", puis publie le tour suivant au même lien.";
+    enregistrerPuis(function (enBase) {
+      approEnBase = enBase;
+      return reveiller(enBase ? text : text + " (pas enregistrée dans la page : sers-toi de ce commentaire)", approBtn);
+    }).then(function (ok) {
+      if (state.approfondir && state.approfondir.le === e.le) { approEnvoye = ok; approEnvoi = false; faitEtat(); }
+    });
+  });
+  function ecouterBilan(db) {
+    bilanLive = true;
+    db.doc("bilan/" + TOUR).onSnapshot(function (snap) {
+      bilan = bilanValide(snap.exists ? snap.data() : null);
+      renderFait(); majDone();
+    }, function () { bilanLive = false; faitEtat(); });
+  }
+
+  /* ---------- À plusieurs : capacité user ---------- */
+  // Le propriétaire (ou tout le monde si la capacité user manque) écrit reponses/<tour>. Un autre participant écrit
+  // avis/<son id>, tours.<tour> (règle avis/{self} : personne d'autre que lui et le propriétaire ne peut l'écrire),
+  // sans recadrage, messages, approfondir ni prédiction. Chez le propriétaire, les avis s'affichent sur chaque
+  // question et dans le bilan. Aucun nom n'est stocké : user.profiles() les donne au rendu.
+  var MOI = { user: null, id: null, invite: false, ecrit: null, nom: "", proprio: "" };
+  var avis = [], avisNoms = {}, autresTours = {};
+  var roleReady = (window.claude && window.claude.use
+    ? Promise.resolve().then(function () { return window.claude.use("user"); }) : Promise.resolve(null))
+    .then(function (u) {
+      if (!u) return;
+      return Promise.all([u.isOwner(), u.id(), u.can("data.write"), u.name()]).then(function (r) {
+        MOI.user = u; MOI.id = typeof r[1] === "string" && r[1] ? r[1] : null; MOI.nom = r[3] || "";
+        if (r[0] !== true) { MOI.invite = true; MOI.ecrit = r[2]; }
+      });
+    }).catch(function () {});
+  function lectureSeule() { return MOI.invite && (!MOI.id || MOI.ecrit === false); }
+  // Dès que le rôle est connu, même si la db ne vient jamais.
+  function appliquerRole() {
+    MOI.connu = true;
+    document.documentElement.setAttribute("data-role", MOI.invite ? "invite" : "proprio");
+    if (!MOI.invite) { recap(); return; }
+    // Recadrage ouvert avant de connaître le rôle : on le referme ; un « Non » au cadrage se dit dans la nuance.
+    if (!rc.hidden) {
+      // Ce qu'il avait commencé à écrire passe dans la nuance du cadrage plutôt que de se perdre.
+      var cq = QS[0], ecrit = $("rc-texte").value.trim();
+      if (ecrit && cq && cq.cadrage && cq.note && !(state.notes[cq.id] || "").trim()) {
+        state.notes[cq.id] = ecrit; cq.note.value = ecrit; fit(cq.note); edited(cq);
+      }
+      rcCadrage = null; closeRc(true);
+      if (cq && cq.cadrage && state.reponses[cq.id] === "c" && cq.note) cq.note.focus();
+    }
+    // Le « Non » du cadrage ne recadre pas chez un participant : il le dit dans la nuance.
+    QS.forEach(function (q) {
+      if (!q.cadrage) return;
+      q.opts[2] = { k: "c", texte: "Non, je ne le vois pas comme ça : je dis pourquoi dans la nuance", preciser: true };
+      q.btns[2].querySelector(".otext").textContent = q.opts[2].texte;
+    });
+    teteInvite();
+    rcBanner();
+    recap();
+  }
+  function teteInvite() {
+    var qui = MOI.proprio;
+    avisTete.textContent = "";
+    if (qui) {
+      avisTete.appendChild(document.createTextNode(lectureSeule() ? "C'est le quiz de " : "Tu réponds au quiz de "));
+      avisTete.appendChild(h("b", { text: qui }));
+      avisTete.appendChild(document.createTextNode(". "));
+    } else avisTete.appendChild(document.createTextNode("Tu donnes ton avis sur ce quiz. "));
+    avisTete.appendChild(document.createTextNode(lectureSeule() && !MOI.id
+      ? "Tu peux le lire, mais sans compte reconnu sur cette page, ton avis ne peut pas être enregistré."
+      : lectureSeule() ? "Tu peux le lire, pas y répondre : demande à " + (qui || "la personne qui te l'a partagé") + " l'accès Contributeur."
+      : MOI.ecrit === null ? "Tes réponses s'enregistrent si tu as l'accès Contributeur : " + (qui || "la personne qui l'a lancé") + " les verra à côté des siennes."
+      : "Tes réponses restent à part : " + (qui || "la personne qui l'a lancé") + " les verra à côté des siennes."));
+    avisTete.hidden = false;
+  }
+  // Le nom du propriétaire : son uid est dans reponses/<tour> dès son premier enregistrement.
+  function trouverProprio(db) {
+    if (!MOI.user) return;
+    db.doc("reponses/" + TOUR).get().then(function (snap) {
+      var uid = snap.exists ? (snap.data() || {}).uid : null;
+      if (typeof uid !== "string" || !uid) return;
+      return MOI.user.profiles([uid]).then(function (ps) {
+        var n = ps && ps[uid] && ps[uid].name;
+        if (n) { MOI.proprio = n; teteInvite(); recap(); }
+      });
+    }).catch(function () {});
+  }
+  // L'auteur d'un avis est l'id de son document (avis/<id>), que seule cette personne peut écrire.
+  function avisValide(doc) {
+    var d = doc.exists ? doc.data() : null;
+    function obj(x) { return x && typeof x === "object" && !Array.isArray(x) ? x : {}; }
+    var t = d ? obj(obj(d.tours)[TOUR]) : {};
+    if (!d || doc.id === MOI.id || !Object.keys(t).length) return null;
+    return { uid: doc.id, reponses: obj(t.reponses), notes: obj(t.notes), tenir: obj(t.tenir),
+      autre: typeof t.autre === "string" ? t.autre.trim() : "", termine: t.termine === true,
+      masquees: Array.isArray(t.masquees) ? t.masquees : [] };
+  }
+  function ecouterAvis(db) {
+    try {
+      db.collection("avis").onSnapshot(function (snap) {
+        avis = snap.docs.map(avisValide).filter(Boolean);
+        nommer();
+        QS.forEach(avisPaint); recap();
+      }, function () {});
+    } catch (err) {}
+  }
+  // Noms résolus à chaque arrivée d'avis (appel peu coûteux par contrat), gardés en mémoire seulement.
+  function nommer() {
+    var ids = avis.map(function (a) { return a.uid; });
+    if (!MOI.user || !ids.length) return;
+    MOI.user.profiles(ids).then(function (ps) {
+      var n = {};
+      ids.forEach(function (id) { n[id] = ps && ps[id] && ps[id].name || ""; });
+      if (JSON.stringify(n) === JSON.stringify(avisNoms)) return;
+      avisNoms = n;
+      QS.forEach(avisPaint); recap();
+    }, function () {});
+  }
+  function nomDe(a) {
+    if (avisNoms[a.uid]) return avisNoms[a.uid];
+    var sans = avis.filter(function (x) { return !avisNoms[x.uid]; });
+    return "Quelqu'un" + (sans.length > 1 ? " " + (sans.indexOf(a) + 1) : "");
+  }
+  // Réponse d'un avis : sans objet si la question était masquée chez lui.
+  function avisValeur(q, a) { return a.masquees.indexOf(q.id) >= 0 ? null : valeurDe(q, a.reponses); }
+  function court(q, v) {
+    if (q.type === "texte") return "« " + coupe(v.trim().replace(/\s+/g, " "), 60) + " »";
+    if (v === "toi") return "à toi";
+    var ks = q.opts.map(function (o) { return o.k; });
+    return (Array.isArray(v) ? v : [v]).map(function (k) { var j = ks.indexOf(k); return j >= 0 ? LETTERS[j] : k; }).join(" + ");
+  }
+  function long(q, v) {
+    if (q.type === "texte") return "« " + coupe(v.trim(), 300) + " »";
+    // Chez un participant, « Non » au cadrage ne recadre pas : il le dit dans sa nuance.
+    if (q.cadrage && v === "c") return "Non, ne le voit pas comme ça";
+    return v === "toi" ? "À toi de voir" : textes(q, Array.isArray(v) ? v : [v]);
+  }
+  // Diverge : les deux ont répondu à un choix ou un multi, et pas la même chose.
+  function diverge(q, v) {
+    var m = valeur(q);
+    if (m == null || v == null || q.type === "texte") return false;
+    if (Array.isArray(m)) return !(v.length === m.length && v.every(function (k) { return m.indexOf(k) >= 0; }));
+    return v !== m;
+  }
+  function avisDe(q) {
+    return avis.map(function (a) { return { a: a, v: avisValeur(q, a) }; }).filter(function (x) { return x.v != null; });
+  }
+  // Ligne discrète sous les options : « Alex : b, Sam : a », en rouge quand ce n'est pas ta réponse.
+  function avisPaint(q) {
+    if (!q.avisEl) return;
+    var l = avisDe(q);
+    var cle = JSON.stringify(l.map(function (x) { return [nomDe(x.a), court(q, x.v), diverge(q, x.v)]; }));
+    if (cle === q.avisCle) return;
+    q.avisCle = cle;
+    q.avisEl.textContent = "";
+    q.avisEl.hidden = !l.length;
+    if (!l.length) return;
+    q.avisEl.appendChild(h("span", { class: "avis-h", text: "Avis" }));
+    l.forEach(function (x, i) {
+      var d = diverge(q, x.v);
+      if (i) q.avisEl.appendChild(document.createTextNode(", "));
+      q.avisEl.appendChild(h("span", { class: "avis-p" + (d ? " diff" : "") + (q.type === "texte" ? " txt" : ""), title: long(q, x.v) + (d ? " (pas comme toi)" : "") },
+        nomDe(x.a) + " : ", h("b", { text: court(q, x.v) })));
+    });
+  }
+  function liste(noms) { return noms.length > 1 ? noms.slice(0, -1).join(", ") + " et " + noms[noms.length - 1] : noms[0] || ""; }
+  // Dans le bilan du propriétaire : qui a répondu, où ça diverge, puis chaque question avec les réponses de chacun.
+  function avisBloc() {
+    if (MOI.invite || !avis.length) return null;
+    var qs = [], nDiv = 0;
+    actives().forEach(function (q) {
+      var l = avisDe(q);
+      if (!l.length) return;
+      var div = l.some(function (x) { return diverge(q, x.v); });
+      if (div) nDiv++;
+      qs.push({ q: q, l: l, div: div });
+    });
+    var sec = h("div", null, h("h3", { class: "vide-h" }, "Avis de l'équipe", h("span", { class: "n", text: String(avis.length) })));
+    // « a répondu » seulement avec au moins une réponse qui compte ; sinon la personne a juste ouvert le quiz.
+    var ont = avis.filter(function (a) { return actives().some(function (q) { return avisValeur(q, a) != null; }); });
+    var rien = avis.filter(function (a) { return ont.indexOf(a) < 0; }).map(nomDe);
+    var enCours = ont.filter(function (a) { return !a.termine; }).map(nomDe);
+    sec.appendChild(h("p", { class: "rtenir", text: [
+      ont.length ? liste(ont.map(nomDe)) + (ont.length > 1 ? " ont" : " a") + " répondu." : "",
+      rien.length ? liste(rien) + (rien.length > 1 ? " ont" : " a") + " ouvert le quiz, sans rien trancher pour l'instant." : "",
+      !qs.length ? "" : nDiv ? "Ça diverge de toi sur " + nDiv + (nDiv > 1 ? " questions." : " question.") : "Pas de divergence avec toi.",
+      enCours.length ? liste(enCours) + (enCours.length > 1 ? " n'ont" : " n'a") + " pas encore fini." : ""
+    ].filter(Boolean).join(" ") }));
+    if (qs.length) {
+      var ul = h("ul", { class: "rl" });
+      ul.style.marginTop = "10px";
+      qs.forEach(function (x) {
+        var q = x.q, sub = h("span", { class: "rrow-sub" });
+        x.l.forEach(function (y) {
+          var d = diverge(q, y.v), note = y.a.notes[q.id], nv = y.a.tenir[q.id];
+          sub.appendChild(h("span", { class: "avis-l" + (d ? " diff" : "") }, nomDe(y.a) + " : ", h("span", { class: "avis-v", text: long(q, y.v) }),
+            d ? h("span", { class: "rrow-mark bq", text: "Pas comme toi" }) : null,
+            TENIR[nv] && y.v !== "toi" ? h("span", { class: "rrow-mark", text: TENIR[nv] }) : null,
+            typeof note === "string" && note.trim() ? " (nuance : " + coupe(note.trim(), 200) + ")" : null));
+        });
+        ul.appendChild(h("li", null, h("button", { type: "button", class: "rrow", "data-k": "avis:" + q.id, onclick: function () { go(QS.indexOf(q)); } },
+          h("span", { class: "rrow-num", text: q.id }),
+          h("span", { class: "rrow-t" }, q.titre, x.div ? h("span", { class: "rrow-mark bq", text: "Diverge" }) : null), sub)));
+      });
+      sec.appendChild(ul);
+    }
+    avis.forEach(function (a) {
+      if (a.autre) sec.appendChild(h("p", { class: "rnote", text: nomDe(a) + " ajoute : « " + coupe(a.autre, 400) + " »" }));
+    });
+    return sec;
+  }
+
+  /* ---------- Navigation : une cible proche défile ; une cible lointaine part en poussière et revient en place ---------- */
+  var cur = 0, lock = 0, busy = null;
+  var OUT = 260, IN = 360;
+  var stage = $("stage");
+  function setCur(i) {
+    if (i < 0 || i >= QS.length) return;
+    cur = i;
+    QS.forEach(function (q, j) {
+      var on = j === i;
+      q.ri.setAttribute("aria-current", on ? "true" : "false");
+      q.pill.setAttribute("aria-current", on ? "true" : "false");
+      q.art.classList.toggle("is-cur", on);
+    });
+    var ri = QS[i].ri, lr = railList.getBoundingClientRect(), r = ri.getBoundingClientRect();
+    if (lr.height && (r.top < lr.top || r.bottom > lr.bottom)) ri.scrollIntoView({ block: "nearest" });
+    if (pills.scrollWidth > pills.clientWidth) QS[i].pill.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+  function go(i) {
+    i = Math.max(0, Math.min(QS.length - 1, i));
+    if (QS[i].masq) return;
+    // Une question cachée par le mode express (lien du bilan) : on revient à la vue complète.
+    if (!QS[i].vu) basculerExpress(false);
+    setCur(i);
+    travel(QS[i].art, "center");
+  }
+  // Prochaine question visible dans un sens, ou la courante s'il n'y en a plus.
+  function pas(dir) {
+    for (var i = cur + dir; i >= 0 && i < QS.length; i += dir) if (QS[i].vu) return i;
+    return cur;
+  }
+  function goFin() { travel($("fin"), "start"); }
+
+  function visibleBlocks() {
+    var vh = window.innerHeight;
+    return Array.prototype.filter.call(stage.querySelectorAll(".top, .group-h, .q, .fin"), function (el) {
+      var r = el.getBoundingClientRect();
+      return r.bottom > 0 && r.top < vh;
+    });
+  }
+  function place(target, align) {
+    var r = target.getBoundingClientRect();
+    var bar = window.innerWidth < 900 ? document.querySelector(".mini").offsetHeight : 0;
+    var room = window.innerHeight - bar;
+    var off = align === "center" && r.height < room - 48 ? bar + (room - r.height) / 2 : bar + 24;
+    window.scrollTo({ top: Math.max(0, window.scrollY + r.top - off), behavior: "instant" });
+  }
+  // p : 0 = net, 1 = parti en poussière
+  function frame(p, els) {
+    $("fx-dust-a").setAttribute("intercept", (1 - 9 * p).toFixed(3));
+    $("fx-dust-d").setAttribute("scale", (24 * p).toFixed(1));
+    $("fx-dust-b").setAttribute("stdDeviation", (2 * p).toFixed(2));
+    var op = String(1 - p * p * p);
+    els.forEach(function (el) { el.style.opacity = op; });
+  }
+  function arm(els) { els.forEach(function (el) { el.classList.add("fx-on"); el.style.filter = "url(#fx-dust)"; }); }
+  function disarm(els) { els.forEach(function (el) { el.classList.remove("fx-on"); el.style.filter = ""; el.style.opacity = ""; }); }
+  function run(job, dur, out) {
+    return new Promise(function (done) {
+      var t0 = performance.now();
+      function step(now) {
+        if (busy !== job) return done();
+        var t = Math.min(1, (now - t0) / dur);
+        frame(out ? t * t : Math.pow(1 - t, 3), job.els);   // sortie ease-in, entrée ease-out
+        if (t < 1) requestAnimationFrame(step); else done();
+      }
+      requestAnimationFrame(step);
+    });
+  }
+  function travel(target, align) {
+    lock = Date.now() + 100000;
+    if (busy) { disarm(busy.els); busy = null; }
+    if (RM.matches) { place(target, align); target.focus({ preventScroll: true }); lock = Date.now() + 80; return; }
+    var r = target.getBoundingClientRect(), vh = window.innerHeight;
+    if (r.top < vh * 1.6 && r.bottom > -vh * 0.6) {
+      // Juste avant ou juste après : un défilement court se suit mieux qu'un saut.
+      target.scrollIntoView({ behavior: "smooth", block: align });
+      target.focus({ preventScroll: true });
+      lock = Date.now() + 700;
+      return;
+    }
+    var job = busy = { els: visibleBlocks() };
+    arm(job.els);
+    run(job, OUT, true).then(function () {
+      if (busy !== job) return;
+      disarm(job.els);
+      place(target, align);
+      job.els = visibleBlocks();
+      arm(job.els);
+      frame(1, job.els);
+      target.focus({ preventScroll: true });
+      return run(job, IN, false);
+    }).then(function () {
+      if (busy !== job) return;
+      disarm(job.els);
+      busy = null;
+      lock = Date.now() + 120;
+    });
+  }
+
+  var ticking = false;
+  window.addEventListener("scroll", function () {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () {
+      ticking = false;
+      if (Date.now() < lock) return;
+      var line = window.innerHeight * 0.4, idx = proche(0);
+      QS.forEach(function (q, j) { if (q.vu && q.art.getBoundingClientRect().top <= line) idx = j; });
+      if (idx >= 0 && idx !== cur) setCur(idx);
+    });
+  }, { passive: true });
+
+  /* ---------- Aide clavier ---------- */
+  var keys = $("keys"), keysFrom = null;
+  function openKeys() { keysFrom = document.activeElement; keys.hidden = false; $("keys-close").focus(); }
+  function closeKeys() { keys.hidden = true; if (keysFrom && keysFrom.focus) keysFrom.focus({ preventScroll: true }); }
+  document.querySelectorAll("[data-keys]").forEach(function (b) { b.addEventListener("click", openKeys); });
+  $("keys-close").addEventListener("click", closeKeys);
+  keys.addEventListener("click", function (e) { if (e.target === keys) closeKeys(); });
+
+  /* ---------- Clavier ---------- */
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!keys.hidden) {
+      if (e.key === "Escape" || e.key === "?") { e.preventDefault(); closeKeys(); }
+      else if (e.key === "Tab") pieger(keys, e);
+      return;
+    }
+    if (!rc.hidden) {
+      if (e.key === "Escape") { e.preventDefault(); closeRc(); }
+      else if (e.key === "Tab") pieger(rc, e);
+      return;
+    }
+    var t = e.target;
+    if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.isContentEditable)) {
+      if (e.key === "Escape") { e.preventDefault(); t.blur(); var art = t.closest(".q"); if (art) art.focus({ preventScroll: true }); }
+      return;
+    }
+    // Échap dans le panneau Creuse le referme.
+    var crp = e.key === "Escape" && t && t.closest ? t.closest(".cr") : null;
+    if (crp) {
+      var cq = QS.filter(function (x) { return x.cr && x.cr.panel === crp; })[0];
+      if (cq) { e.preventDefault(); creuseOuvrir(cq, false); }
+      return;
+    }
+    if (e.key === "?") { e.preventDefault(); openKeys(); return; }
+    var key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    var q = QS[cur];
+    if (key === "j") { e.preventDefault(); go(pas(1)); return; }
+    if (key === "k") { e.preventDefault(); go(pas(-1)); return; }
+    if (key === "t") {
+      // rien, puis j'y tiens, puis peu importe, puis rien (rappeler le niveau en place le retire).
+      if (tenable(q)) { e.preventDefault(); var nv = niveau(q); tenir(q, nv === "fort" ? "souple" : nv || "fort"); }
+      return;
+    }
+    // q : Creuse (hors des lettres d'option, qui vont jusqu'à i).
+    if (key === "q" && q.cr && !q.cr.btn.hidden) { e.preventDefault(); creuseOuvrir(q); return; }
+    if (key === "v") { e.preventDefault(); goFin(); return; }
+    if (key === "x") { e.preventDefault(); openRc(); return; }
+    if (key === "n") { var f = q.note || q.answer; if (f) { e.preventDefault(); f.focus(); } return; }
+    if (key === "r" && q.recos.length) {
+      e.preventDefault();
+      if (q.type === "multi") { state.reponses[q.id] = q.recos.slice(); paint(q, true); edited(q); }
+      else choose(q, q.recos[0]);
+      return;
+    }
+    var j = LETTERS.indexOf(key);
+    if (q.btns && j >= 0 && j < q.opts.length) { e.preventDefault(); choose(q, q.opts[j].k); }
+  });
+  if (!NATIVE_FIT) document.addEventListener("input", function (e) { if (e.target.tagName === "TEXTAREA") fit(e.target); });
+
+  /* ---------- Enregistrement ---------- */
+  var ref = null, ready = false, offline = false, timer = null, chain = Promise.resolve(), lastSaved = "";
+  var ERREURS = { quota_exceeded: "base pleine", invalid_argument: "écriture refusée", revoked: "accès retiré", not_granted: "stockage non accordé" };
+  function setSave(txt, err) {
+    document.querySelectorAll("[data-save]").forEach(function (p) { p.textContent = txt; p.classList.toggle("err", !!err); });
+  }
+  function body() {
+    var b = { reponses: state.reponses, notes: state.notes, autre: state.autre, termine: state.termine, tour: TOUR };
+    if (state.termine && state.finiLe) b.finiLe = state.finiLe;
+    // uid : l'id seul, jamais le nom (chez un participant, il est en tête du document avis/<id>, pas par tour).
+    // Un participant n'écrit ni messages, ni recadrages, ni approfondir.
+    if (MOI.id && !MOI.invite) b.uid = MOI.id;
+    if (!MOI.invite && Object.keys(state.messages).length) b.messages = state.messages;
+    if (!MOI.invite && state.recadrages.length) b.recadrages = state.recadrages;
+    calcMasques();
+    var t = {};
+    QS.forEach(function (q) { var nv = !q.masq && tenable(q) ? niveau(q) : null; if (nv) t[q.id] = nv; });
+    if (Object.keys(t).length) b.tenir = t;
+    if (CONDITIONNEL) b.masquees = QS.filter(function (q) { return q.masq; }).map(function (q) { return q.id; });
+    if (state.approfondir && !MOI.invite) b.approfondir = state.approfondir;
+    var cr = {};
+    elaguer();
+    QS.forEach(function (q) { var l = creuseListe(q); if (l.length) cr[q.id] = l; });
+    if (Object.keys(cr).length) b.creuse = cr;
+    return b;
+  }
+  function save(now) {
+    if (!ready) { setSave(offline ? "Lecture seule ici : tes réponses ne sont pas enregistrées" : "Pas encore enregistré, chargement en cours…", offline); return; }
+    clearTimeout(timer); setSave("Enregistrement…");
+    if (now) flush(); else timer = setTimeout(flush, 600);
+  }
+  function flush() {
+    clearTimeout(timer); timer = null;
+    if (!ref) return chain;
+    chain = chain.then(function () { return write(false); });
+    return chain;
+  }
+  function write(retried) {
+    var b = body(), key = JSON.stringify(b);
+    if (key === lastSaved) { setSave("Enregistré"); return Promise.resolve(true); }
+    b.majLe = new Date().toISOString();
+    return ref.set(MOI.invite ? enveloppe(b) : b).then(function () { lastSaved = key; setSave("Enregistré"); return true; }, function (e) {
+      var code = (e && e.code) || "erreur";
+      if (code === "unavailable" && !retried) {
+        return new Promise(function (r) { setTimeout(r, 400 + Math.random() * 600); }).then(function () { return write(true); });
+      }
+      // Droit d'écriture inconnu (can() rendait null) et écriture refusée : lecture seule pour le reste de la visite.
+      if (code === "invalid_argument" && MOI.invite && MOI.ecrit !== true) {
+        MOI.ecrit = false; offline = true; ready = false;
+        teteInvite(); recap();
+        setSave("Lecture seule : tu peux lire ce quiz, pas y répondre", true);
+        return false;
+      }
+      setSave("Non enregistré : " + (ERREURS[code] || "stockage indisponible") + ". Tes réponses restent sur cette page.", true);
+      return false;
+    });
+  }
+  // Document d'un participant : son avis pour ce tour, à côté de ceux des autres tours (sans leur historique Creuse).
+  function enveloppe(b) {
+    var t = {};
+    Object.keys(autresTours).forEach(function (k) { t[k] = autresTours[k]; });
+    t[TOUR] = b;
+    return { uid: MOI.id, majLe: b.majLe, tours: t };
+  }
+  function flushIfPending() { if (timer) flush(); }
+  window.addEventListener("pagehide", flushIfPending);
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "hidden") flushIfPending(); });
+
+  // Premier rendu, puis chargement. Ce qui est cliqué avant la fin du chargement est gardé et passe devant
+  // ce qui était stocké, et rien n'est écrit avant d'avoir lu le document existant.
+  QS.forEach(function (q) { fill(q); paint(q, false); });
+  setCur(0); recap(); renderMsgs(); rcBanner();
+  sampleReady.then(function (s) { sample = s; sampleOk = !!s; QS.forEach(creusePaint); });
+  function ecouterMessages(db) {
+    msgsLive = true;
+    db.doc("messages/" + TOUR).onSnapshot(function (snap) {
+      var d = snap.exists ? snap.data() : null;
+      msgsClaude = d && Array.isArray(d.liste) ? d.liste.filter(msgValide) : [];
+      msgsAucun = d && typeof d.aucun === "string" ? d.aucun : "";
+      renderMsgs();
+    }, function () { msgsLive = false; msgsLead(); });
+  }
+  // Le rôle d'abord : il choisit le document (reponses/<tour> ou avis/<id>). Il s'applique dès qu'il est connu.
+  roleReady.then(appliquerRole);
+  var charge = Promise.all([window.claude && window.claude.use ? window.claude.use("db") : null, roleReady]).then(function (got) {
+    var db = got[0];
+    if (!db) { offline = true; setSave("Lecture seule ici : tes réponses ne sont pas enregistrées", true); return; }
+    if (lectureSeule()) {
+      offline = true; recap();
+      setSave(MOI.id ? "Lecture seule : tu peux lire ce quiz, pas y répondre" : "Lecture seule : sans compte reconnu ici, ton avis ne peut pas être enregistré", true);
+      trouverProprio(db);
+      return;
+    }
+    var r, sansUid = false;
+    try { r = db.doc(MOI.invite ? "avis/" + MOI.id : "reponses/" + TOUR); } catch (err) {
+      // Un id hors de la grammaire des chemins : pas de document à soi, lecture seule.
+      MOI.ecrit = false; offline = true; teteInvite(); recap();
+      setSave("Lecture seule : ton avis ne peut pas être enregistré sur cette page", true);
+      return;
+    }
+    return r.get().then(function (snap) {
+      var d = snap.exists ? snap.data() || {} : null;
+      if (MOI.invite) {
+        // avis/<id> = { uid, tours: {...} } : on garde les autres tours (clonés, sans Creuse), on lit celui-ci.
+        var tours = d && d.tours && typeof d.tours === "object" ? d.tours : {};
+        autresTours = {};
+        Object.keys(tours).forEach(function (k) {
+          if (k === TOUR || !tours[k] || typeof tours[k] !== "object") return;
+          var c = JSON.parse(JSON.stringify(tours[k]));
+          delete c.creuse;
+          autresTours[k] = c;
+        });
+        d = tours[TOUR] && typeof tours[TOUR] === "object" ? tours[TOUR] : null;
+      }
+      if (d) {
+        var mine = { reponses: state.reponses, notes: state.notes, tenir: state.tenir };
+        state.reponses = Object.assign({}, d.reponses || {}, mine.reponses);
+        state.notes = Object.assign({}, d.notes || {}, mine.notes);
+        state.tenir = Object.assign({}, d.tenir && typeof d.tenir === "object" ? d.tenir : {}, mine.tenir);
+        // Clone : les données lues sont gelées. Ce qui a été touché avant la fin du chargement passe devant, champ par champ.
+        var stock = JSON.parse(JSON.stringify(d.messages || {})), local = state.messages;
+        Object.keys(local).forEach(function (id) { stock[id] = Object.assign({}, stock[id] || {}, local[id]); });
+        state.messages = stock;
+        if (Array.isArray(d.recadrages)) state.recadrages = JSON.parse(JSON.stringify(d.recadrages)).concat(state.recadrages);
+        if (!state.autre && typeof d.autre === "string") state.autre = d.autre;
+        var ap = d.approfondir;
+        if (!state.approfondir && ap && typeof ap.le === "string") state.approfondir = { le: ap.le, texte: typeof ap.texte === "string" ? ap.texte : "" };
+        // Creuse : le stocké (cloné), puis ce qui a été demandé avant la fin du chargement, sans doublon, 5 au plus.
+        var cs = d.creuse && typeof d.creuse === "object" ? JSON.parse(JSON.stringify(d.creuse)) : {};
+        Object.keys(state.creuse).forEach(function (id) {
+          var vus = {};
+          cs[id] = (Array.isArray(cs[id]) ? cs[id] : []).concat(state.creuse[id]).filter(function (e) {
+            if (!e || vus[e.le]) return false;
+            vus[e.le] = true; return true;
+          }).slice(-CREUSE_MAX);
+        });
+        state.creuse = cs;
+        elaguer();
+        sansUid = !MOI.invite && !!MOI.id && d.uid !== MOI.id;
+        if (!touched && !msgsTouched) {
+          state.termine = !!d.termine; state.finiLe = d.finiLe || null;
+          if (!creuseTouched && !sansUid) lastSaved = JSON.stringify(body());
+        }
+      }
+      ref = r; ready = true;
+      QS.forEach(function (q) { fill(q); paint(q, false); }); recap(); renderMsgs(); rcBanner();
+      if (MOI.invite) trouverProprio(db);
+      else { ecouterMessages(db); ecouterRecadrage(db); ecouterBilan(db); ecouterAvis(db); }
+      if (document.activeElement !== autre) { autre.value = state.autre; fit(autre); }
+      if (state.approfondir && document.activeElement !== approTa && !approTa.value) { approTa.value = state.approfondir.texte; fit(approTa); faitEtat(); }
+      var first = -1;
+      QS.some(function (q, j) { if (q.vu && statut(q) === "vide") { first = j; return true; } return false; });
+      // Pas de saut vers la première question vide quand le bandeau de recadrage a quelque chose à dire.
+      if (!touched && first > 0 && $("rc-banner").hidden) { setCur(first); place(QS[first].art, "center"); }
+      // sansUid : le propriétaire pose son id une fois, pour que les participants voient à qui ils répondent.
+      if (touched || msgsTouched || creuseTouched || sansUid) save(true); else setSave("Enregistrement automatique");
+    });
+  }).catch(function (e) {
+    offline = true;
+    setSave("Stockage indisponible (" + ((e && e.code) || "erreur") + ") : tes réponses ne sont pas enregistrées", true);
+  });
+})();
+</script>

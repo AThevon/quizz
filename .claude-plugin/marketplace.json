@@ -1,0 +1,15 @@
+{
+  "name": "quizz",
+  "owner": { "name": "AThevon" },
+  "metadata": {
+    "description": "/quizz pour Claude Code : les questions en attente deviennent un quiz cliquable, Claude applique tes réponses.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "quizz",
+      "source": "./",
+      "description": "Les questions que Claude te pose deviennent un quiz cliquable (recos, conséquences, nuances), puis Claude applique et te dit ce qu'il a fait."
+    }
+  ]
+}

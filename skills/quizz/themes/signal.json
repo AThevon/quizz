@@ -1,0 +1,21 @@
+{
+  "nom": "Signal",
+  "description": "Blanc net, noir franc et orange de balisage, angles vifs et mise en page serrée : pour les quiz courts qu'on traite vite. Clair d'abord, un sombre noir.",
+  "base": "ardoise",
+  "prefere": "clair",
+  "clair": {
+    "fond": "#ffffff", "surface": "#ffffff", "surface-2": "#fff1e8", "champ": "#ffffff", "ligne": "#d9d9d9",
+    "controle": "#1a1a1a", "texte": "#0d0d0d", "texte-2": "#3b3b3b", "discret": "#666666",
+    "accent": "#c83c00", "accent-hi": "#ad3300", "sur-accent": "#ffffff", "focus": "#0d0d0d",
+    "reco": "#8f5b00", "ecart": "#c0154b", "toi": "#5b3cc4", "fait": "#0057c2", "voile": "#0d0d0d"
+  },
+  "sombre": {
+    "fond": "#0b0b0b", "surface": "#121212", "surface-2": "#1f1712", "champ": "#000000", "ligne": "#2b2b2b",
+    "controle": "#8a8a8a", "texte": "#f2f2f2", "texte-2": "#c4c4c4", "discret": "#9a9a9a",
+    "accent": "#ff6a1f", "accent-hi": "#ff8a4d", "sur-accent": "#000000", "focus": "#ff6a1f",
+    "reco": "#ffcc33", "ecart": "#ff4f84", "toi": "#c2b0ff", "fait": "#6fb8ff", "voile": "#000000"
+  },
+  "polices": {"tampons": "Bebas Neue", "titres": "Archivo", "texte": "Archivo", "mono": "Red Hat Mono"},
+  "arrondi": 0,
+  "densite": "compact"
+}

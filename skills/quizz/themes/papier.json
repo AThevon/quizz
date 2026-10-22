@@ -1,0 +1,21 @@
+{
+  "nom": "Papier",
+  "description": "Gris papier et encre bleu-vert de stylo plume, angles discrets, de l'air entre les questions : fait pour lire longtemps. Clair d'abord, un sombre papier carbone.",
+  "base": "ardoise",
+  "prefere": "clair",
+  "clair": {
+    "fond": "#f3f3f0", "surface": "#ffffff", "surface-2": "#eaf1f0", "champ": "#fbfbf9", "ligne": "#dcdcd6",
+    "controle": "#878a8e", "texte": "#1c1e21", "texte-2": "#45484e", "discret": "#686c73",
+    "accent": "#0b6b68", "accent-hi": "#085654", "sur-accent": "#ffffff", "focus": "#0b6b68",
+    "reco": "#8c5a00", "ecart": "#b3204d", "toi": "#5f3fbf", "fait": "#1b5fae", "voile": "#1c1e21"
+  },
+  "sombre": {
+    "fond": "#1a1a19", "surface": "#21211f", "surface-2": "#292a27", "champ": "#131312", "ligne": "#343431",
+    "controle": "#74746d", "texte": "#ebeae4", "texte-2": "#bdbcb3", "discret": "#97968d",
+    "accent": "#52c4b9", "accent-hi": "#7bd4cb", "sur-accent": "#111312", "focus": "#52c4b9",
+    "reco": "#f0c04c", "ecart": "#ff6f93", "toi": "#c5b6f4", "fait": "#8fc5ff", "voile": "#0b0b0a"
+  },
+  "polices": {"tampons": {"famille": "Oswald", "graisses": [600]}, "titres": "Schibsted Grotesk", "texte": "Public Sans", "mono": "IBM Plex Mono"},
+  "arrondi": 6,
+  "densite": "aere"
+}

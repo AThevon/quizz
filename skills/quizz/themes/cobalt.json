@@ -1,0 +1,21 @@
+{
+  "nom": "Cobalt",
+  "description": "Un bleu cobalt profond assumé en fond, un accent chartreuse qui claque dessus, des angles doux. Sombre d'abord, un clair bleu pâle.",
+  "base": "ardoise",
+  "prefere": "sombre",
+  "sombre": {
+    "fond": "#11205e", "surface": "#172a72", "surface-2": "#1f3482", "champ": "#0b1747", "ligne": "#2a3f8f",
+    "controle": "#6f80c4", "texte": "#eef1ff", "texte-2": "#c3cbf0", "discret": "#9aa7dc",
+    "accent": "#c8f25a", "accent-hi": "#d8f78a", "sur-accent": "#0c1747", "focus": "#c8f25a",
+    "reco": "#ffd166", "ecart": "#ff7aa2", "toi": "#e7a0ff", "fait": "#7fe3ff", "voile": "#070e2e"
+  },
+  "clair": {
+    "fond": "#e9edfb", "surface": "#f8f9ff", "surface-2": "#dfe5fa", "champ": "#ffffff", "ligne": "#c9d1f0",
+    "controle": "#7381b5", "texte": "#0d1640", "texte-2": "#33406f", "discret": "#58648f",
+    "accent": "#1f3fbf", "accent-hi": "#17309a", "sur-accent": "#ffffff", "focus": "#1f3fbf",
+    "reco": "#8a5b00", "ecart": "#b8204f", "toi": "#a0279e", "fait": "#00708f", "voile": "#0d1640"
+  },
+  "polices": {"tampons": "League Gothic", "titres": "Bricolage Grotesque", "texte": "Hanken Grotesk", "mono": "Martian Mono"},
+  "arrondi": 16,
+  "densite": "normal"
+}

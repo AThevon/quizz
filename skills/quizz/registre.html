@@ -1,0 +1,695 @@
+<title>Registre des décisions</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400..700&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Registre des décisions : les décisions tirées des quiz, écrites par Claude dans la collection `decisions`.
+   Même thème que le quiz : rail des projets à gauche, liste groupée par projet puis par jour à droite. Lecture seule. */
+:root {
+  color-scheme: dark;
+  --bg: #131518;
+  --surface: #1a1d21;
+  --surface-2: #22262b;
+  --field: #0e1012;
+  --line: #2d3238;
+  --control: #6b737d;
+  --text: #e6e9ec;
+  --text-2: #b2b8bf;
+  --muted: #8d949c;
+  --accent: #6fcf7c;
+  --accent-hi: #8edc98;
+  --sun: #FFC940;
+  --rasp: #FF5A88;
+  --lilac: #C9B8F6;
+  --sky: #8EC7FF;
+  --on-ink: #131518;
+  --focus: #6fcf7c;
+
+  --title: "Familjen Grotesk", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --sans: "Onest", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --gl: max(16px, env(safe-area-inset-left, 0px));
+  --gr: max(16px, env(safe-area-inset-right, 0px));
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.55;
+  padding-left: var(--gl);
+  padding-right: var(--gr);
+  padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+[hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Mise en page ---------- */
+.app {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  gap: clamp(28px, 4vw, 64px);
+  margin: 0 auto;
+}
+
+/* ---------- Rail des projets ---------- */
+.rail {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  margin-block: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.rail-head { padding: 14px 18px 12px; border-bottom: 1px solid var(--line); }
+.count { display: flex; align-items: baseline; gap: 12px; }
+.count-n {
+  font-family: var(--title); font-weight: 500; font-size: 32px; line-height: 1; letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+}
+.count-l { font-size: 14px; color: var(--text-2); }
+.count-sub { margin: 6px 0 0; font-size: 13px; color: var(--muted); min-height: 1.4em; }
+.rail-list { flex: 1; overflow-y: auto; padding: 2px 8px 6px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.rail-group { margin: 10px 10px 4px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.pj {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; column-gap: 10px;
+  width: 100%; text-align: left; background: transparent; border: 0;
+  padding: 6px 10px; border-radius: 8px; font-size: 14px; line-height: 1.35; color: var(--text-2);
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.pj:hover { background: var(--surface-2); color: var(--text); }
+.pj[aria-pressed="true"] { background: var(--surface-2); color: var(--text); box-shadow: inset 3px 0 0 var(--accent); }
+.pj-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pj-n { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pj[aria-pressed="true"] .pj-n { color: var(--text); }
+.pj.zero .pj-name { color: var(--muted); }
+.rail-foot { padding: 12px 18px 14px; border-top: 1px solid var(--line); }
+.live { margin: 0; font-size: 13px; line-height: 1.4; color: var(--muted); }
+.live.err { color: var(--rasp); }
+
+/* ---------- Colonne de lecture ---------- */
+main { padding-block: clamp(32px, 6vh, 64px) 96px; min-width: 0; }
+.top { max-width: 960px; }
+.eyebrow { margin: 0 0 14px; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 {
+  margin: 0; font-family: var(--title); font-weight: 500;
+  font-size: clamp(32px, 3.4vw, 46px); line-height: 1.06; letter-spacing: -.015em;
+  text-wrap: balance;
+}
+.intro { margin: 18px 0 0; max-width: 40em; font-size: 17px; line-height: 1.55; color: var(--text-2); }
+
+/* barre d'outils : recherche, projet (mobile), remplacées */
+.tools {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
+  max-width: 960px; margin-top: 28px; padding: 12px 0;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+}
+.search { position: relative; flex: 1 1 320px; min-width: 0; }
+.search input {
+  display: block; width: 100%; min-height: 44px;
+  padding: 10px 44px 10px 14px; font-size: 16px; line-height: 1.4;
+  background: var(--field); border: 1.5px solid var(--control); border-radius: 12px; color: var(--text);
+  transition: border-color 140ms ease;
+  -webkit-appearance: none; appearance: none;
+}
+.search input::placeholder { color: var(--muted); }
+.search input:hover { border-color: var(--text-2); }
+.search input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-color: var(--text-2); }
+.search input::-webkit-search-cancel-button { display: none; }
+.search kbd, .search-x { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); }
+.search-x {
+  width: 28px; height: 28px; display: grid; place-items: center; padding: 0;
+  background: none; border: 0; border-radius: 6px; color: var(--text-2); font-size: 18px; line-height: 1;
+}
+.search-x:hover { color: var(--text); background: var(--surface-2); }
+kbd {
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  display: inline-block; min-width: 22px; padding: 0 6px; text-align: center;
+  border: 1px solid var(--control); border-bottom-width: 2px; border-radius: 5px;
+  color: var(--text-2); background: var(--bg); line-height: 1.6;
+}
+.pj-select { display: none; }
+.pj-select select {
+  width: 100%; min-height: 44px; padding: 8px 36px 8px 12px; font-size: 15px;
+  background: var(--field); border: 1.5px solid var(--control); border-radius: 12px; color: var(--text);
+  -webkit-appearance: none; appearance: none;
+}
+.pj-select { position: relative; }
+.pj-select::after {
+  content: ""; position: absolute; right: 15px; top: 50%; width: 7px; height: 7px; margin-top: -5px; pointer-events: none;
+  border-right: 2px solid var(--text-2); border-bottom: 2px solid var(--text-2); transform: rotate(45deg);
+}
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-2); cursor: pointer; white-space: nowrap; }
+.toggle .court { display: none; }
+.toggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.result { margin: 14px 0 0; max-width: 960px; font-size: 14px; color: var(--muted); min-height: 1.5em; }
+.result strong { color: var(--text-2); font-weight: 600; }
+.alerte { margin: 10px 0 0; max-width: 960px; font-size: 14px; line-height: 1.5; color: var(--rasp); }
+
+/* ---------- Groupes ---------- */
+.proj { max-width: 960px; margin-top: 48px; }
+.proj:first-child { margin-top: 28px; }
+.proj-h { display: flex; align-items: baseline; gap: 14px; margin: 0 0 6px; scroll-margin-top: 96px; }
+.proj-h h2 { margin: 0; font-family: var(--title); font-weight: 500; font-size: clamp(24px, 2.4vw, 30px); line-height: 1.15; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.proj-n { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--muted); flex: none; }
+.day {
+  display: flex; align-items: center; gap: 16px;
+  margin: 22px 0 12px;
+  font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+.day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.decs { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- Décision ---------- */
+.dec {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px 12px; scroll-margin-top: 96px;
+  transition: border-color 200ms ease, opacity 160ms ease;
+}
+.dec:focus { outline: none; }
+.dec.vise { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.dec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.dec-sujet { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.dec-time { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.dec-q { margin: 4px 0 0; font-size: 14px; line-height: 1.45; color: var(--text-2); }
+.dec-t { margin: 6px 0 0; font-family: var(--title); font-weight: 500; font-size: 19px; line-height: 1.3; letter-spacing: -.005em; color: var(--text); overflow-wrap: anywhere; }
+.dec-note { margin: 8px 0 0; padding-left: 12px; border-left: 2px solid var(--line); font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.dec-meta { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 14px; }
+.chip {
+  font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--text-2);
+  border: 1px solid var(--control); border-radius: 5px; padding: 0 7px; white-space: nowrap;
+}
+.lien { color: var(--accent); text-underline-offset: 3px; }
+.lien:hover { color: var(--accent-hi); }
+.btn-lien { background: none; border: 0; padding: 2px 0; font-size: 14px; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; text-align: left; }
+.btn-lien:hover { color: var(--text); }
+.tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink, var(--muted));
+}
+.tag::before { content: ""; width: 8px; height: 8px; border-radius: 2px; border: 1.5px solid var(--ink, var(--control)); }
+.dec[data-statut="remplacee"] { background: transparent; border-style: dashed; }
+.dec[data-statut="remplacee"] .dec-t { color: var(--text-2); text-decoration: line-through; text-decoration-color: var(--muted); text-decoration-thickness: 1px; }
+.dec[data-statut="remplacee"] .dec-sujet { color: var(--muted); }
+.dec[data-statut="remplacee"].vise { border-style: solid; }
+mark { background: transparent; color: var(--sun); font-weight: 600; text-decoration: underline; text-decoration-color: var(--sun); text-underline-offset: 3px; }
+.dec[data-statut="remplacee"] .dec-t mark { text-decoration: line-through; }
+
+/* ---------- États ---------- */
+.etat {
+  max-width: 960px; margin-top: 28px; padding: 22px 22px 20px;
+  background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 12px;
+}
+.etat[data-ton="info"] { border-left-color: var(--sky); }
+.etat[data-ton="err"] { border-left-color: var(--rasp); }
+.etat[data-ton="vide"] { border-left-color: var(--accent); }
+.etat h2 { margin: 0; font-family: var(--title); font-weight: 500; font-size: 22px; line-height: 1.2; letter-spacing: -.01em; }
+.etat p { margin: 8px 0 0; max-width: 40em; font-size: 15px; line-height: 1.55; color: var(--text-2); }
+.etat .btn-lien { margin-top: 10px; }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 899px) {
+  .app { display: block; }
+  .rail { display: none; }
+  main { padding-block: 28px 96px; }
+  .intro { font-size: 16px; margin-top: 14px; }
+  .tools {
+    margin-top: 20px; margin-inline: calc(-1 * var(--gl)) calc(-1 * var(--gr));
+    padding: 10px var(--gr) 10px var(--gl); gap: 8px 14px;
+  }
+  .search { flex-basis: 100%; }
+  .pj-select { display: block; flex: 1 1 200px; min-width: 0; }
+  .toggle .long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .toggle .court { display: inline; }
+  .proj { margin-top: 40px; }
+  .proj-h { scroll-margin-top: 150px; }
+  .dec { padding: 12px 14px 10px; scroll-margin-top: 150px; }
+  .dec-t { font-size: 18px; }
+  .etat { padding: 18px 16px 16px; }
+}
+@media (hover: none) { .search kbd { display: none; } }
+/* Au doigt : des cibles d'au moins 44 px de haut, sans changer la mise en page. */
+@media (pointer: coarse) {
+  .dec-meta .lien, .dec-meta .btn-lien, .toggle { display: inline-flex; align-items: center; min-height: 44px; }
+  .dec-meta { row-gap: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+
+<div class="app">
+  <aside class="rail" aria-label="Projets">
+    <div class="rail-head">
+      <div class="count"><span class="count-n" id="total">0</span><span class="count-l" id="total-l">décisions</span></div>
+      <p class="count-sub" id="total-sub"></p>
+    </div>
+    <div class="rail-list">
+      <p class="rail-group" id="pj-label">Projets</p>
+      <div id="pj-list" role="group" aria-labelledby="pj-label"></div>
+    </div>
+    <div class="rail-foot"><p class="live" id="live" aria-live="polite">Lecture du registre…</p></div>
+  </aside>
+
+  <main>
+    <header class="top">
+      <p class="eyebrow">Registre</p>
+      <h1>Ce qui a été décidé</h1>
+      <p class="intro">Les décisions prises dans les quiz, telles que Claude les a appliquées. Les plus récentes d'abord, rangées par projet.</p>
+    </header>
+
+    <div class="tools" id="tools">
+      <div class="search">
+        <label class="sr" for="q">Rechercher dans les décisions</label>
+        <input id="q" type="search" placeholder="Rechercher une décision" autocomplete="off" spellcheck="false" enterkeyhint="search">
+        <kbd id="q-kbd" aria-hidden="true">/</kbd>
+        <button class="search-x" id="q-x" type="button" aria-label="Effacer la recherche" hidden>×</button>
+      </div>
+      <div class="pj-select">
+        <label class="sr" for="pj-sel">Projet</label>
+        <select id="pj-sel"></select>
+      </div>
+      <label class="toggle"><input type="checkbox" id="rempl" checked> <span class="long">Montrer les remplacées</span><span class="court" aria-hidden="true">Remplacées</span></label>
+    </div>
+    <p class="result" id="result" aria-live="polite"></p>
+    <p class="alerte" id="alerte" role="status" hidden></p>
+
+    <div id="list"></div>
+    <div class="etat" id="etat" data-ton="info" hidden></div>
+  </main>
+</div>
+
+<script>
+// Données : collection `decisions` de la db de cet artefact, un document par décision, écrit par Claude (ArtifactData) :
+//   { projet, sujet, question, decision, le (iso), quiz (url), tour, qid, statut: "active" | "remplacee", remplacee_par?, note? }
+// remplacee_par est l'id d'un autre document de `decisions`. La page ne fait que lire.
+(function () {
+  "use strict";
+  var TOUS = "";
+  var LS_PJ = "registre.projet", LS_RE = "registre.remplacees";
+  var RM = window.matchMedia("(prefers-reduced-motion: reduce)");
+  function $(id) { return document.getElementById(id); }
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      var v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k === "class") el.className = v;
+      else if (k === "text") el.textContent = v;
+      else if (k.slice(0, 2) === "on") el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (var i = 2; i < arguments.length; i++) {
+      var c = arguments[i];
+      if (c == null || c === false) continue;
+      el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    }
+    return el;
+  }
+  function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+
+  /* ---------- Modèle ---------- */
+  var DECS = [];        // décisions lues, déjà nettoyées (copies, jamais les objets gelés de la db)
+  var PAR_ID = {};
+  var REMPLACE = {};    // id remplaçante -> [ids remplacées]
+  var etatDb = "charge"; // charge | ok | sans | err
+  var errCode = "";
+  var filtre = { projet: lsGet(LS_PJ) || TOUS, texte: "", remplacees: lsGet(LS_RE) !== "0" };
+  var cartes = {};      // id -> { sig, el } : une carte n'est refaite que si sa décision ou la recherche change
+
+  function str(v) { return typeof v === "string" ? v.trim() : ""; }
+  function nettoie(id, d) {
+    var le = str(d.le), t = le ? Date.parse(le) : NaN;
+    return {
+      id: id,
+      projet: str(d.projet) || "Sans projet",
+      sujet: str(d.sujet),
+      question: str(d.question),
+      decision: str(d.decision),
+      note: str(d.note),
+      le: le, t: isNaN(t) ? null : t,
+      quiz: /^https?:\/\//i.test(str(d.quiz)) ? str(d.quiz) : "",
+      tour: str(d.tour),
+      qid: str(d.qid),
+      statut: d.statut === "remplacee" ? "remplacee" : "active",
+      remplacee_par: str(d.remplacee_par)
+    };
+  }
+  // Texte replié de la décision, calculé une fois à la lecture (la saisie ne refait que des indexOf).
+  function foin(x) {
+    if (x.foin == null) x.foin = plieTout([x.projet, x.sujet, x.question, x.decision, x.note, x.qid, x.tour].join(" \n "));
+    return x.foin;
+  }
+  function charger(docs) {
+    DECS = []; PAR_ID = {}; REMPLACE = {}; PLIS = {};
+    docs.forEach(function (s) {
+      if (!s.exists) return;
+      var d = s.data();
+      if (!d || typeof d !== "object") return;
+      var x = nettoie(s.id, d);
+      if (!x.decision && !x.question) return;
+      DECS.push(x); PAR_ID[x.id] = x;
+    });
+    DECS.forEach(function (x) {
+      if (x.statut === "remplacee" && x.remplacee_par && PAR_ID[x.remplacee_par]) (REMPLACE[x.remplacee_par] = REMPLACE[x.remplacee_par] || []).push(x.id);
+    });
+    // Plus récent d'abord ; sans date à la fin.
+    DECS.sort(function (a, b) { return (b.t == null ? -Infinity : b.t) - (a.t == null ? -Infinity : a.t) || (a.id < b.id ? -1 : 1); });
+  }
+
+  /* ---------- Recherche ---------- */
+  // Insensible à la casse et aux accents. On replie caractère par caractère pour retrouver les positions d'origine.
+  function plie(c) { return c.normalize ? c.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase() : c.toLowerCase(); }
+  function plieTout(s) { var o = ""; for (var i = 0; i < s.length; i++) o += plie(s[i]); return o; }
+  function termes() { return plieTout(filtre.texte).split(/\s+/).filter(Boolean); }
+  function correspond(x, ts) {
+    if (!ts.length) return true;
+    var f = foin(x);
+    return ts.every(function (t) { return f.indexOf(t) >= 0; });
+  }
+  // Repli d'un champ avec, pour chaque caractère replié, sa position d'origine ; gardé jusqu'au prochain snapshot.
+  var PLIS = {};
+  function plis(texte) {
+    var c = PLIS[texte];
+    if (c) return c;
+    var s = "", map = [];
+    for (var i = 0; i < texte.length; i++) { var p = plie(texte[i]); for (var j = 0; j < p.length; j++) { s += p[j]; map.push(i); } }
+    return (PLIS[texte] = { s: s, map: map });
+  }
+  // Texte avec les termes trouvés dans des <mark>, construit en nœuds (jamais d'innerHTML).
+  function marque(texte, ts) {
+    var f = document.createDocumentFragment();
+    if (!ts.length) { f.appendChild(document.createTextNode(texte)); return f; }
+    var pl = plis(texte), map = pl.map;
+    var on = new Array(texte.length + 1).join("0").split("").map(Number);
+    ts.forEach(function (t) {
+      var at = pl.s.indexOf(t);
+      while (at >= 0) { for (var k = at; k < at + t.length; k++) on[map[k]] = 1; at = pl.s.indexOf(t, at + t.length); }
+    });
+    var cur = "", m = 0;
+    function flush() { if (!cur) return; f.appendChild(m ? h("mark", { text: cur }) : document.createTextNode(cur)); cur = ""; }
+    for (var n = 0; n < texte.length; n++) { if (on[n] !== m) { flush(); m = on[n]; } cur += texte[n]; }
+    flush();
+    return f;
+  }
+
+  /* ---------- Dates ---------- */
+  var AN = new Date().getFullYear();
+  function jourCle(x) {
+    if (x.t == null) return "";
+    var d = new Date(x.t);
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+  }
+  function jourLabel(x) {
+    if (x.t == null) return "Sans date";
+    var d = new Date(x.t), auj = new Date(), hier = new Date(); hier.setDate(auj.getDate() - 1);
+    function meme(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+    var o = { weekday: "long", day: "numeric", month: "long" };
+    if (d.getFullYear() !== AN) o.year = "numeric";
+    var s = d.toLocaleDateString("fr-FR", o);
+    if (meme(d, auj)) return "Aujourd'hui, " + s;
+    if (meme(d, hier)) return "Hier, " + s;
+    return s;
+  }
+  function heure(x) { return x.t == null ? "" : new Date(x.t).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); }
+  function dateCourte(x) { return x.t == null ? "" : new Date(x.t).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }); }
+  function court(s, n) { return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, "") + "…" : s; }
+
+  /* ---------- Rendu ---------- */
+  function visibles(sansProjet) {
+    var ts = termes();
+    return DECS.filter(function (x) {
+      if (!filtre.remplacees && x.statut === "remplacee") return false;
+      if (!sansProjet && filtre.projet && x.projet !== filtre.projet) return false;
+      return correspond(x, ts);
+    });
+  }
+  function projets() {
+    // Projets dans l'ordre de leur décision la plus récente (DECS est déjà trié).
+    var vus = [], n = {};
+    DECS.forEach(function (x) { if (!(x.projet in n)) { vus.push(x.projet); n[x.projet] = 0; } });
+    return vus;
+  }
+
+  function carte(x, ts) {
+    var sig = JSON.stringify([x, ts, REMPLACE[x.id] || [], x.remplacee_par && PAR_ID[x.remplacee_par] ? PAR_ID[x.remplacee_par].decision : ""]);
+    var c = cartes[x.id];
+    if (c && c.sig === sig) return c.el;
+    var meta = h("div", { class: "dec-meta" });
+    if (x.statut === "remplacee") meta.appendChild(h("span", { class: "tag", style: "--ink: var(--rasp)" }, "Remplacée"));
+    if (x.tour || x.qid) meta.appendChild(h("span", { class: "chip", title: "Tour et question du quiz" }, [x.tour, x.qid].filter(Boolean).join(" · ")));
+    if (x.quiz) meta.appendChild(h("a", { class: "lien", href: x.quiz, target: "_blank", rel: "noopener noreferrer" }, "Ouvrir le quiz"));
+    var par = x.statut === "remplacee" && x.remplacee_par ? PAR_ID[x.remplacee_par] : null;
+    if (par) meta.appendChild(h("button", { class: "btn-lien", type: "button", onclick: function () { vise(par.id); } },
+      "Remplacée par : " + court(par.decision || par.question, 60)));
+    (REMPLACE[x.id] || []).forEach(function (id) {
+      var v = PAR_ID[id];
+      meta.appendChild(h("button", { class: "btn-lien", type: "button", onclick: function () { vise(id); } },
+        "Remplace la décision" + (v.t != null ? " du " + dateCourte(v) : "")));
+    });
+    var head = h("div", { class: "dec-head" },
+      x.sujet ? h("span", { class: "dec-sujet" }, marque(x.sujet, ts)) : null,
+      x.t != null ? h("time", { class: "dec-time", datetime: x.le }, heure(x)) : null);
+    var el = h("article", { class: "dec", id: "d-" + x.id, "data-statut": x.statut, tabindex: "-1" },
+      head.childNodes.length ? head : null,
+      x.question ? h("p", { class: "dec-q" }, marque(x.question, ts)) : null,
+      x.decision ? h("p", { class: "dec-t" }, marque(x.decision, ts)) : null,
+      x.note ? h("p", { class: "dec-note" }, marque(x.note, ts)) : null,
+      meta.childNodes.length ? meta : null);
+    cartes[x.id] = { sig: sig, el: el };
+    return el;
+  }
+
+  function renderRail() {
+    var tous = visibles(true), n = {};
+    tous.forEach(function (x) { n[x.projet] = (n[x.projet] || 0) + 1; });
+    var liste = projets();
+    if (filtre.projet && liste.indexOf(filtre.projet) < 0 && etatDb === "ok") filtre.projet = TOUS;
+    var box = $("pj-list"), sel = $("pj-sel");
+    var items = [{ p: TOUS, nom: "Tous les projets", n: tous.length }].concat(liste.map(function (p) { return { p: p, nom: p, n: n[p] || 0 }; }));
+    // Mise à jour sur place : les boutons existants sont réutilisés, l'ordre suit la liste.
+    var ancien = {};
+    Array.prototype.forEach.call(box.children, function (b) { ancien[b.getAttribute("data-p")] = b; });
+    items.forEach(function (it, i) {
+      var b = ancien[it.p];
+      if (!b) {
+        b = h("button", { class: "pj", type: "button", "data-p": it.p, onclick: function () { choisir(it.p); } },
+          h("span", { class: "pj-name" }), h("span", { class: "pj-n" }));
+      }
+      delete ancien[it.p];
+      b.firstChild.textContent = it.nom; b.firstChild.title = it.nom;
+      b.lastChild.textContent = String(it.n);
+      b.setAttribute("aria-pressed", it.p === filtre.projet ? "true" : "false");
+      b.classList.toggle("zero", !it.n);
+      if (box.children[i] !== b) box.insertBefore(b, box.children[i] || null);
+    });
+    Object.keys(ancien).forEach(function (k) { ancien[k].remove(); });
+    var selCle = JSON.stringify(items);
+    if (document.activeElement !== sel && selCle !== sel.getAttribute("data-cle")) {
+      sel.setAttribute("data-cle", selCle);
+      sel.textContent = "";
+      items.forEach(function (it) { sel.appendChild(h("option", { value: it.p }, it.nom + " (" + it.n + ")")); });
+    }
+    if (document.activeElement !== sel) sel.value = filtre.projet;
+    var nb = DECS.length, nr = DECS.filter(function (x) { return x.statut === "remplacee"; }).length;
+    // Rien de lu (chargement ou erreur) : pas de faux zéro.
+    if (etatDb !== "ok" && !nb) { $("total").textContent = "-"; $("total-l").textContent = "décisions"; $("total-sub").textContent = ""; return; }
+    $("total").textContent = String(nb - nr);
+    $("total-l").textContent = nb - nr > 1 ? "décisions en vigueur" : "décision en vigueur";
+    $("total-sub").textContent = nr ? nr + (nr > 1 ? " remplacées" : " remplacée") + ", " + liste.length + (liste.length > 1 ? " projets" : " projet") : (liste.length ? liste.length + (liste.length > 1 ? " projets" : " projet") : "");
+  }
+
+  function setEtat(ton, titre, texte, bouton) {
+    var e = $("etat");
+    e.textContent = "";
+    e.setAttribute("data-ton", ton);
+    e.appendChild(h("h2", null, titre));
+    if (texte) e.appendChild(h("p", null, texte));
+    if (bouton) e.appendChild(h("button", { class: "btn-lien", type: "button", onclick: bouton.fn }, bouton.texte));
+    e.hidden = false;
+  }
+
+  function render() {
+    renderRail();
+    var list = $("list"), ts = termes();
+    var focus = document.activeElement;
+    var res = $("result");
+    $("etat").hidden = true;
+    // La barre reste tant que des décisions sont affichées, même si la lecture s'interrompt : la recherche active reste visible.
+    $("tools").hidden = !DECS.length;
+    res.hidden = $("tools").hidden;
+    var al = $("alerte");
+    al.hidden = !(etatDb === "err" && DECS.length);
+    al.textContent = al.hidden ? "" : "Lecture interrompue" + (errCode ? " (" + errCode + ")" : "") + " : ce qui est affiché peut ne plus être à jour, recharge la page.";
+
+    if (etatDb === "charge") { list.textContent = ""; setEtat("info", "Lecture du registre…", ""); return; }
+    if (etatDb === "sans") {
+      list.textContent = "";
+      setEtat("info", "Ouvre ce registre depuis claude.ai",
+        "Les décisions sont stockées avec l'artefact publié : ici, la page ne peut pas les lire.");
+      return;
+    }
+    if (etatDb === "err" && !DECS.length) {
+      list.textContent = "";
+      setEtat("err", "Le registre n'a pas pu être lu", "Recharge la page dans un moment" + (errCode ? " (" + errCode + ")" : "") + ".");
+      return;
+    }
+    if (!DECS.length) {
+      list.textContent = "";
+      setEtat("vide", "Aucune décision encore", "Elles arrivent après chaque quiz appliqué : Claude y note ce qui a été tranché, avec le lien vers le quiz.");
+      return;
+    }
+
+    var vis = visibles(false);
+    var nPj = filtre.projet ? " dans " + filtre.projet : "";
+    res.textContent = "";
+    if (ts.length) res.append(h("strong", null, String(vis.length)), (vis.length > 1 ? " décisions trouvées" : " décision trouvée") + " pour « " + filtre.texte.trim() + " »" + nPj);
+    else res.append(h("strong", null, String(vis.length)), (vis.length > 1 ? " décisions" : " décision") + nPj + (filtre.remplacees ? "" : ", sans les remplacées"));
+
+    if (!vis.length) {
+      list.textContent = "";
+      var autres = filtre.projet ? visibles(true).length : 0;
+      setEtat("vide", "Rien ici",
+        ts.length ? "Aucune décision ne contient « " + filtre.texte.trim() + " »" + nPj + (autres ? ", mais " + autres + " ailleurs." : ".") : filtre.projet ? "Ce projet n'a que des décisions remplacées." : "Toutes les décisions ont été remplacées.",
+        { texte: autres ? "Chercher dans tous les projets" : "Tout afficher", fn: function () { if (autres) choisir(TOUS); else toutAfficher(); } });
+      return;
+    }
+
+    // Projet (ordre de la décision la plus récente), puis jour, puis heure.
+    var groupes = [], parPj = {};
+    vis.forEach(function (x) {
+      var g = parPj[x.projet];
+      if (!g) { g = parPj[x.projet] = { projet: x.projet, jours: [], parJour: {}, n: 0 }; groupes.push(g); }
+      var k = jourCle(x), j = g.parJour[k];
+      if (!j) { j = g.parJour[k] = { x: x, items: [] }; g.jours.push(j); }
+      j.items.push(x); g.n++;
+    });
+    var frag = document.createDocumentFragment();
+    groupes.forEach(function (g) {
+      var sec = h("section", { class: "proj", "aria-label": g.projet },
+        h("div", { class: "proj-h" }, h("h2", null, g.projet), h("span", { class: "proj-n" }, String(g.n))));
+      g.jours.forEach(function (j) {
+        sec.appendChild(h("h3", { class: "day" }, jourLabel(j.x)));
+        var box = h("div", { class: "decs" });
+        j.items.forEach(function (x) { box.appendChild(carte(x, ts)); });
+        sec.appendChild(box);
+      });
+      frag.appendChild(sec);
+    });
+    list.textContent = "";
+    list.appendChild(frag);
+    // Une carte déplacée perd le focus : on le lui rend sans faire défiler.
+    if (focus && focus !== document.activeElement && list.contains(focus)) focus.focus({ preventScroll: true });
+  }
+
+  /* ---------- Actions ---------- */
+  // Changer de projet repart du début de la liste : la barre est collante, on vise donc la ligne de résultat
+  // juste sous elle (saut direct, la liste vient de changer sous les yeux).
+  function choisir(p) {
+    filtre.projet = p; lsSet(LS_PJ, p);
+    render();
+    var res = $("result"), tools = $("tools");
+    if (res.hidden) return;
+    var but = res.getBoundingClientRect().top + window.scrollY - tools.offsetHeight - 8;
+    if (window.scrollY > but) window.scrollTo({ top: Math.max(0, but), behavior: "instant" });
+  }
+  function toutAfficher() {
+    filtre.projet = TOUS; filtre.texte = ""; filtre.remplacees = true;
+    $("q").value = ""; $("rempl").checked = true; $("q-x").hidden = true; $("q-kbd").hidden = false;
+    lsSet(LS_PJ, ""); lsSet(LS_RE, "1");
+    render();
+  }
+  // Un saut court peut défiler ; un long saut arrive directement, sans défiler sous les yeux.
+  function place(el, haut) {
+    var r = el.getBoundingClientRect();
+    var loin = Math.abs(r.top) > window.innerHeight * 1.2;
+    el.scrollIntoView({ block: haut ? "start" : "center", behavior: loin || RM.matches ? "auto" : "smooth" });
+  }
+  var viseT = null;
+  function vise(id) {
+    var x = PAR_ID[id];
+    if (!x) return;
+    if (!document.getElementById("d-" + id)) {
+      // La cible est filtrée : on élargit juste ce qu'il faut.
+      if (filtre.projet && filtre.projet !== x.projet) filtre.projet = x.projet;
+      if (x.statut === "remplacee") filtre.remplacees = true;
+      if (!correspond(x, termes())) { filtre.texte = ""; $("q").value = ""; }
+      $("rempl").checked = filtre.remplacees; $("q-x").hidden = !filtre.texte; $("q-kbd").hidden = !!filtre.texte;
+      render();
+    }
+    var el = document.getElementById("d-" + id);
+    if (!el) return;
+    Array.prototype.forEach.call(document.querySelectorAll(".dec.vise"), function (e) { e.classList.remove("vise"); });
+    el.classList.add("vise");
+    place(el, false);
+    el.focus({ preventScroll: true });
+    clearTimeout(viseT);
+    viseT = setTimeout(function () { el.classList.remove("vise"); }, 2400);
+  }
+
+  var q = $("q");
+  q.value = "";
+  var saisieT = 0;
+  q.addEventListener("input", function () {
+    filtre.texte = q.value;
+    $("q-x").hidden = !q.value; $("q-kbd").hidden = !!q.value;
+    // Une frappe rapide ne rend qu'une fois par image.
+    if (!saisieT) saisieT = requestAnimationFrame(function () { saisieT = 0; render(); });
+  });
+  q.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && q.value) { e.preventDefault(); q.value = ""; q.dispatchEvent(new Event("input")); }
+    else if (e.key === "Escape") q.blur();
+  });
+  $("q-x").addEventListener("click", function () { q.value = ""; q.dispatchEvent(new Event("input")); q.focus(); });
+  $("pj-sel").addEventListener("change", function (e) { choisir(e.target.value); });
+  $("rempl").checked = filtre.remplacees;
+  $("rempl").addEventListener("change", function (e) { filtre.remplacees = e.target.checked; lsSet(LS_RE, filtre.remplacees ? "1" : "0"); render(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+    var t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+    if ($("tools").hidden) return;
+    e.preventDefault(); q.focus(); q.select();
+  });
+
+  /* ---------- Lecture ---------- */
+  function setLive(t, err) { var l = $("live"); l.textContent = t; l.classList.toggle("err", !!err); }
+  render();
+  var use = window.claude && window.claude.use ? window.claude.use("db") : Promise.resolve(null);
+  Promise.resolve(use).then(function (db) {
+    if (!db) { etatDb = "sans"; setLive("Hors de claude.ai : registre non lu", true); render(); return; }
+    db.collection("decisions").onSnapshot(function (snap) {
+      charger(snap.docs);
+      etatDb = "ok"; errCode = "";
+      setLive(snap.metadata && snap.metadata.fromCache ? "Mise à jour en cours…" : "À jour, se met à jour tout seul");
+      render();
+    }, function (e) {
+      errCode = (e && e.code) || "erreur";
+      etatDb = "err";
+      setLive("Lecture interrompue (" + errCode + ") : recharge la page", true);
+      render();
+    });
+  }).catch(function (e) {
+    etatDb = "err"; errCode = (e && e.code) || "erreur";
+    setLive("Stockage indisponible (" + errCode + ")", true);
+    render();
+  });
+})();
+</script>

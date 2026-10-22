@@ -1,0 +1,13 @@
+{
+  "nom": "Ardoise",
+  "description": "Le thème d'origine : ardoise foncée monochrome, un seul accent vert pour l'interface, tampons en Anton. Sombre seulement.",
+  "sombre": {
+    "fond": "#131518", "surface": "#1a1d21", "surface-2": "#22262b", "champ": "#0e1012", "ligne": "#2d3238",
+    "controle": "#6b737d", "texte": "#e6e9ec", "texte-2": "#b2b8bf", "discret": "#8d949c",
+    "accent": "#6fcf7c", "accent-hi": "#8edc98", "sur-accent": "#131518", "focus": "#6fcf7c",
+    "reco": "#FFC940", "ecart": "#FF5A88", "toi": "#C9B8F6", "fait": "#8EC7FF", "voile": "#090a0c"
+  },
+  "polices": {"tampons": "Anton", "titres": "Familjen Grotesk", "texte": "Onest", "mono": "JetBrains Mono"},
+  "arrondi": 12,
+  "densite": "normal"
+}
