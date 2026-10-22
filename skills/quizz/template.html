@@ -452,6 +452,9 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 .avis-l { display: block; }
 .avis-l + .avis-l { margin-top: 2px; }
 .avis-l.diff .avis-v { color: var(--rasp); }
+/* Chez un participant, après l'envoi : la nuance du propriétaire sous sa réponse, et les groupes du bloc du bilan. */
+.avis-n { color: var(--text-2); overflow-wrap: anywhere; }
+.rv-h { margin: 18px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 
 /* ---------- Mobile ---------- */
 @media (max-width: 899px) {
@@ -595,7 +598,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
           <textarea id="autre" class="big" rows="3" placeholder="Une idée, un oubli, une remarque sur le quiz lui-même."></textarea>
         </div>
         <div class="fin-cta">
-          <button class="btn-fin" type="button" id="finish">C'est bon, j'ai fini</button>
+          <button class="btn-fin" type="button" id="finish">Envoyer mes réponses</button>
           <p class="done" id="done" role="status" aria-live="polite"></p>
           <p class="save" data-save></p>
         </div>
@@ -690,8 +693,9 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 //   tenir?: {id: "fort" | "souple"}, masquees?: [id], approfondir?: { le, texte }, creuse?: {id: [{ q, r, le }]}, uid? }.
 // À plusieurs : un participant (pas propriétaire) écrit avis/<son id> = { uid, majLe, tours: { <tour>: mêmes champs sans
 // messages, recadrages, approfondir ni uid } } (son id, jamais son nom : la règle avis/{self} lui réserve ce document).
-// Le propriétaire met son uid dans reponses/<tour>.
-// Claude écrit messages/<tour> = { liste: [message] } après « C'est bon », recadrage/<tour> = { fait: le } après un recadrage,
+// Le propriétaire met son uid dans reponses/<tour>. Un participant qui a envoyé (termine en base) lit reponses/<tour> en direct
+// et voit les réponses et nuances du propriétaire à côté des siennes ; avant, il répond sans les voir.
+// Claude écrit messages/<tour> = { liste: [message] } après l'envoi, recadrage/<tour> = { fait: le } après un recadrage,
 // et bilan/<tour> = { le, resume, decisions?: [{id, texte}], toi?: [{id, texte}], fichiers?: [texte], suite?: [texte] } une fois appliqué.
 (function () {
   "use strict";
@@ -733,7 +737,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     var type = q.cadrage ? "choix" : q.type || "choix";
     var opts = q.cadrage ? CADRAGE.slice() : (q.options || []).map(function (o) { return { k: o.k, texte: o.texte, reco: !!o.reco }; });
     if (type === "choix" && !q.cadrage && q.delegable !== false) opts.push({ k: "toi", texte: "À toi de voir", toi: true });
-    // si : {id: [clés]}, toutes les conditions doivent tenir. prediction : jamais montrée avant « C'est bon ».
+    // si : {id: [clés]}, toutes les conditions doivent tenir. prediction : jamais montrée avant l'envoi.
     var si = null;
     if (q.si && typeof q.si === "object" && !q.cadrage) {
       si = {};
@@ -1210,7 +1214,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     var el = k ? Array.prototype.filter.call(box.querySelectorAll("[data-k]"), function (x) { return x.getAttribute("data-k") === k; })[0] : null;
     (el || $("fin")).focus({ preventScroll: true });
   }
-  // Le bilan de Claude porte-t-il sur le dernier « C'est bon » ? (Sans date lisible, on le croit.)
+  // Le bilan de Claude porte-t-il sur le dernier envoi ? (Sans date lisible, on le croit.)
   function bilanAJour() {
     if (!bilan) return false;
     var b = Date.parse(bilan.le), f = Date.parse(state.finiLe);
@@ -1235,9 +1239,9 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     var box = $("recap");
     garderFocus(box, function () { recapBlocs(box, f); });
     var reessai = MOI.invite && finEnBase === false && !offline;
-    $("finish").textContent = reessai ? "Réessayer d'enregistrer" : state.termine ? "C'est noté"
+    $("finish").textContent = reessai ? "Réessayer d'enregistrer" : state.termine ? "Réponses envoyées"
       : f.partiel && MOI.connu && !MOI.invite ? "Envoyer les bloquantes, le reste attend"
-      : f.vides ? "C'est bon, même avec " + f.vides + (f.vides > 1 ? " vides" : " vide") : "C'est bon, j'ai fini";
+      : f.vides ? "Envoyer, même avec " + f.vides + (f.vides > 1 ? " vides" : " vide") : "Envoyer mes réponses";
     $("finish").disabled = state.termine && !reessai;
     majDone(f);
     msgsLead();
@@ -1252,12 +1256,13 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       : MOI.invite ? (offline ? "Rien n'est enregistré ici : ce quiz est en lecture seule pour toi."
         : finEnvoi ? "Enregistrement de ton avis…"
         : finEnBase === false ? "Pas enregistré : ton avis reste sur cette page. Réessaie dans un moment."
-        : sent ? "C'est envoyé : Claude a ton avis, et " + qui + " le verra à côté de ses réponses."
-        : "C'est enregistré : " + qui + " verra ton avis à côté de ses réponses.")
+        : (sent ? "C'est envoyé : Claude a ton avis, et " + qui + " le verra à côté de ses réponses."
+          : "C'est enregistré : " + qui + " verra ton avis à côté de ses réponses.") +
+          (revele ? " Les réponses " + de(qui) + " s'affichent maintenant à côté des tiennes." : ""))
       : finEnvoi ? "Envoi à Claude…"
       : bilanAJour() ? "C'est appliqué : ce que j'en ai fait est juste en dessous."
       : sent ? (f.partiel ? "C'est envoyé, j'applique les bloquantes, le reste attend." : "C'est envoyé, je relis tes réponses et j'applique.")
-      : f.partiel ? "Reviens dans le terminal et dis-moi « fini », j'applique les bloquantes." : "Reviens dans le terminal et dis-moi « fini », je relis tout.";
+      : f.partiel ? "Reviens dans le terminal et dis-moi « c'est envoyé », j'applique les bloquantes." : "Reviens dans le terminal et dis-moi « c'est envoyé », je relis tout.";
   }
   function recapBlocs(box, f) {
     box.textContent = "";
@@ -1276,7 +1281,8 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     var tn = tenirLigne();
     if (tn) box.appendChild(tn);
     var av = avisBloc();
-    if (av) box.appendChild(av);
+    if (av && MOI.invite) box.insertBefore(av, box.firstChild);
+    else if (av) box.appendChild(av);
   }
   function textes(q, ks) {
     return ks.map(function (k) { var o = q.opts.filter(function (x) { return x.k === k; })[0]; return o ? o.texte : k; }).join(" + ");
@@ -1326,7 +1332,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     p.appendChild(document.createTextNode("."));
     return p;
   }
-  // Après « C'est bon » seulement : combien de prédictions justes, et les ratées.
+  // Après l'envoi seulement : combien de prédictions justes, et les ratées.
   function predictions() {
     if (!state.termine || MOI.invite) return null;
     var list = QS.filter(predite);
@@ -1429,9 +1435,9 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   }
   var autre = $("autre");
   autre.addEventListener("input", function () { fit(autre); state.autre = autre.value; edited(null); });
-  // « C'est bon » enregistre la fin, puis prévient la session Claude qui a publié le quiz
-  // (commentaire envoyé à Claude). Sans session à l'écoute, il reste « fini » dans le terminal.
-  // finEnvoi : entre le clic sur « C'est bon » et la fin de la relance. finEnBase : le document était-il bien en base ?
+  // « Envoyer mes réponses » enregistre la fin, puis prévient la session Claude qui a publié le quiz
+  // (commentaire envoyé à Claude). Sans session à l'écoute, il reste « c'est envoyé » dans le terminal.
+  // finEnvoi : entre le clic sur « Envoyer » et la fin de la relance. finEnBase : le document était-il bien en base ?
   var sent = false, commentsApi = null, finEnvoi = false, finEnBase = null, finJeton = 0;
   var commentsReady = window.claude && window.claude.use ? window.claude.use("comments").then(function (c) { commentsApi = c; return c; }, function () { return null; }) : Promise.resolve(null);
   function reveiller(text, el) {
@@ -1461,12 +1467,14 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       : "Quiz « " + QUIZ.nom + " » rempli (tour " + TOUR + (vides ? ", " + vides + " vide" + (vides > 1 ? "s" : "") +
         (f.bloqVides ? " dont " + f.bloqVides + " bloquante" + (f.bloqVides > 1 ? "s" : "") : "") : "") +
         ") : relis reponses/" + TOUR + " et applique.";
-    // Le rôle est connu une fois le chargement fini : un participant relance avec son avis, s'il est bien en base.
+    // Le rôle est connu une fois le chargement terminé : un participant relance avec son avis, s'il est bien en base.
     enregistrerPuis(function (enBase) {
       if (jeton === finJeton) finEnBase = enBase;
+      // Envoyé et bien en base : les réponses du propriétaire apparaissent.
+      if (MOI.invite && enBase && jeton === finJeton && state.termine) devoiler();
       if (!MOI.invite) return reveiller(text, $("finish"));
       if (!enBase) return false;
-      return reveiller("Avis de " + (MOI.nom || "quelqu'un") + " sur le quiz « " + QUIZ.nom + " » (tour " + TOUR +
+      return reveiller("Avis " + de(MOI.nom || "quelqu'un") + " sur le quiz « " + QUIZ.nom + " » (tour " + TOUR +
         (vides ? ", " + vides + " vide" + (vides > 1 ? "s" : "") : "") + ") : relis avis/" + MOI.id + " (champ tours." + TOUR +
         ") et mets-le à côté de reponses/" + TOUR + ".", $("finish"));
     }).then(function (ok) {
@@ -1657,7 +1665,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   }
 
   /* ---------- Messages à envoyer ---------- */
-  // Deux sources : QUIZ.messages (prêts dès l'ouverture) et messages/<tour>, que Claude écrit après « C'est bon »
+  // Deux sources : QUIZ.messages (prêts dès l'ouverture) et messages/<tour>, que Claude écrit après l'envoi
   // (même id : la version de Claude gagne). Ce que l'utilisateur en fait va dans reponses/<tour>.messages[id] :
   // { base, texte } quand il retouche (base = la proposition retouchée, pour que Claude compare), statut
   // "envoye" | "ecarte", raison d'un écart. Rien de tout ça ne rouvre le quiz. Pas d'envoi depuis la page : un
@@ -1690,8 +1698,8 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       : msgsAucun ? msgsAucun
       : state.termine && finEnvoi ? "Envoi à Claude…"
       : state.termine && sent && msgsLive ? "Je les rédige à partir de tes réponses, ils arrivent ici dans un instant."
-      : state.termine ? "Dis-moi « fini » dans le terminal, je rédige les messages et ils arrivent ici."
-      : "Après « C'est bon », je rédige ici les messages qui découlent de tes réponses.";
+      : state.termine ? "Dis-moi « c'est envoyé » dans le terminal, je rédige les messages et ils arrivent ici."
+      : "Après l'envoi, je rédige ici les messages qui découlent de tes réponses.";
   }
   function renderMsgs() {
     var list = msgsTous(), keep = {};
@@ -1855,7 +1863,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 
   /* ---------- Ce que j'en ai fait, approfondir ---------- */
   // Claude écrit bilan/<tour> une fois les réponses appliquées. La section vient sous les messages ; avant, après
-  // « C'est bon », une ligne d'attente dit la même chose que la relance. Avec un bilan, « Approfondir » écrit
+  // l'envoi, une ligne d'attente dit la même chose que la relance. Avec un bilan, « Approfondir » écrit
   // reponses/<tour>.approfondir = { le, texte } et relance Claude, qui publie le tour suivant au même lien.
   var bilan = null, bilanCle = "", bilanLive = false, approEnvoye = null, approEnBase = true, approEnvoi = false;
   var approTa = $("appro-texte"), approBtn = $("appro-go");
@@ -1926,13 +1934,13 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     sec.hidden = !bilan && !state.termine;
     if (sec.hidden) return;
     var partiel = bilanFin().partiel;
-    // Un bilan antérieur au dernier « C'est bon » reste lisible, mais la ligne d'attente passe devant.
+    // Un bilan antérieur au dernier envoi reste lisible, mais la ligne d'attente passe devant.
     var perime = !!bilan && !bilanAJour();
     var attente = finEnvoi ? "Envoi à Claude…"
       : sent && bilanLive ? (partiel ? "J'applique les bloquantes. Ce que j'en ai fait arrive ici, avec ce qui reste."
         : "J'applique tes réponses. Ce que j'en ai fait arrive ici, avec ce qui reste.")
       : sent ? "J'applique tes réponses. Recharge la page plus tard pour voir ce que j'en ai fait."
-      : "Dis-moi « fini » dans le terminal : une fois appliqué, ce que j'en ai fait arrive ici.";
+      : "Dis-moi « c'est envoyé » dans le terminal : une fois appliqué, ce que j'en ai fait arrive ici.";
     $("fait-lead").textContent = !bilan ? attente
       : perime ? attente + (quand(bilan.le) ? " En attendant, le bilan du " + quand(bilan.le) + " :" : " En attendant, le bilan précédent :")
       : quand(bilan.le) ? "Appliqué le " + quand(bilan.le) + "." : "";
@@ -2021,7 +2029,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     var qui = MOI.proprio;
     avisTete.textContent = "";
     if (qui) {
-      avisTete.appendChild(document.createTextNode(lectureSeule() ? "C'est le quiz de " : "Tu réponds au quiz de "));
+      avisTete.appendChild(document.createTextNode((lectureSeule() ? "C'est le quiz " : "Tu réponds au quiz ") + de(qui).slice(0, -qui.length)));
       avisTete.appendChild(h("b", { text: qui }));
       avisTete.appendChild(document.createTextNode(". "));
     } else avisTete.appendChild(document.createTextNode("Tu donnes ton avis sur ce quiz. "));
@@ -2040,19 +2048,23 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       if (typeof uid !== "string" || !uid) return;
       return MOI.user.profiles([uid]).then(function (ps) {
         var n = ps && ps[uid] && ps[uid].name;
-        if (n) { MOI.proprio = n; teteInvite(); recap(); }
+        if (n) { MOI.proprio = n; teteInvite(); QS.forEach(avisPaint); recap(); }
       });
     }).catch(function () {});
   }
   // L'auteur d'un avis est l'id de son document (avis/<id>), que seule cette personne peut écrire.
-  function avisValide(doc) {
-    var d = doc.exists ? doc.data() : null;
-    function obj(x) { return x && typeof x === "object" && !Array.isArray(x) ? x : {}; }
-    var t = d ? obj(obj(d.tours)[TOUR]) : {};
-    if (!d || doc.id === MOI.id || !Object.keys(t).length) return null;
-    return { uid: doc.id, reponses: obj(t.reponses), notes: obj(t.notes), tenir: obj(t.tenir),
+  function obj(x) { return x && typeof x === "object" && !Array.isArray(x) ? x : {}; }
+  // Ce qu'on lit d'un jeu de réponses : un tour d'avis/<id>, ou reponses/<tour> chez un participant.
+  function lireAvis(uid, t) {
+    return { uid: uid, reponses: obj(t.reponses), notes: obj(t.notes), tenir: obj(t.tenir),
       autre: typeof t.autre === "string" ? t.autre.trim() : "", termine: t.termine === true,
       masquees: Array.isArray(t.masquees) ? t.masquees : [] };
+  }
+  function avisValide(doc) {
+    var d = doc.exists ? doc.data() : null;
+    var t = d ? obj(obj(d.tours)[TOUR]) : {};
+    if (!d || doc.id === MOI.id || !Object.keys(t).length) return null;
+    return lireAvis(doc.id, t);
   }
   function ecouterAvis(db) {
     try {
@@ -2076,6 +2088,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     }, function () {});
   }
   function nomDe(a) {
+    if (a.proprio) return MOI.proprio || "Auteur du quiz";
     if (avisNoms[a.uid]) return avisNoms[a.uid];
     var sans = avis.filter(function (x) { return !avisNoms[x.uid]; });
     return "Quelqu'un" + (sans.length > 1 ? " " + (sans.indexOf(a) + 1) : "");
@@ -2107,6 +2120,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   // Ligne discrète sous les options : « Alex : b, Sam : a », en rouge quand ce n'est pas ta réponse.
   function avisPaint(q) {
     if (!q.avisEl) return;
+    if (MOI.invite) return devoilePaint(q);
     var l = avisDe(q);
     var cle = JSON.stringify(l.map(function (x) { return [nomDe(x.a), court(q, x.v), diverge(q, x.v)]; }));
     if (cle === q.avisCle) return;
@@ -2125,7 +2139,8 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   function liste(noms) { return noms.length > 1 ? noms.slice(0, -1).join(", ") + " et " + noms[noms.length - 1] : noms[0] || ""; }
   // Dans le bilan du propriétaire : qui a répondu, où ça diverge, puis chaque question avec les réponses de chacun.
   function avisBloc() {
-    if (MOI.invite || !avis.length) return null;
+    if (MOI.invite) return devoileBloc();
+    if (!avis.length) return null;
     var qs = [], nDiv = 0;
     actives().forEach(function (q) {
       var l = avisDe(q);
@@ -2143,7 +2158,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       ont.length ? liste(ont.map(nomDe)) + (ont.length > 1 ? " ont" : " a") + " répondu." : "",
       rien.length ? liste(rien) + (rien.length > 1 ? " ont" : " a") + " ouvert le quiz, sans rien trancher pour l'instant." : "",
       !qs.length ? "" : nDiv ? "Ça diverge de toi sur " + nDiv + (nDiv > 1 ? " questions." : " question.") : "Pas de divergence avec toi.",
-      enCours.length ? liste(enCours) + (enCours.length > 1 ? " n'ont" : " n'a") + " pas encore fini." : ""
+      enCours.length ? liste(enCours) + (enCours.length > 1 ? " n'ont" : " n'a") + " pas encore envoyé." : ""
     ].filter(Boolean).join(" ") }));
     if (qs.length) {
       var ul = h("ul", { class: "rl" });
@@ -2166,6 +2181,114 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     avis.forEach(function (a) {
       if (a.autre) sec.appendChild(h("p", { class: "rnote", text: nomDe(a) + " ajoute : « " + coupe(a.autre, 400) + " »" }));
     });
+    return sec;
+  }
+
+  /* ---------- Dévoilement, chez un participant ---------- */
+  // Il répond sans voir les réponses du propriétaire. Une fois son avis envoyé (termine en base), il lit
+  // reponses/<tour> en direct (règle read view) : la réponse et la nuance du propriétaire sous chaque question, et
+  // un bloc dans le bilan. Il les a vues : s'il modifie ensuite une réponse, elles restent, et ce navigateur s'en
+  // souvient au rechargement. Le nom vient de user.profiles, jamais de la base.
+  var revele = false, proprio = null, proprioEtat = "attente", proprioUid = null, laDb = null;
+  function devoiler() {
+    if (revele || !laDb || !MOI.invite) return;
+    revele = true;
+    try { localStorage.setItem("quizz-devoile-" + TOUR, "1"); } catch (err) {}
+    try {
+      laDb.doc("reponses/" + TOUR).onSnapshot(function (snap) {
+        var d = snap.exists ? snap.data() : null;
+        proprio = d && typeof d === "object" ? lireAvis(typeof d.uid === "string" ? d.uid : "", d) : null;
+        if (proprio) proprio.proprio = true;
+        proprioEtat = "ok";
+        nommerProprio();
+        QS.forEach(avisPaint); recap();
+      }, function () { proprioEtat = "err"; recap(); });
+    } catch (err) { proprioEtat = "err"; }
+    QS.forEach(avisPaint); recap();
+  }
+  // « de Adri » devient « d'Adri » devant une voyelle ou un h.
+  function de(nom) { return (/^[aeiouyhàâäéèêëîïôöùûüAEIOUYHÀÂÄÉÈÊËÎÏÔÖÙÛÜ]/.test(nom) ? "d'" : "de ") + nom; }
+  function dejaDevoile() {
+    try { return localStorage.getItem("quizz-devoile-" + TOUR) === "1"; } catch (err) { return false; }
+  }
+  function nommerProprio() {
+    var uid = proprio && proprio.uid;
+    if (!MOI.user || !uid || uid === proprioUid) return;
+    proprioUid = uid;
+    MOI.user.profiles([uid]).then(function (ps) {
+      var n = ps && ps[uid] && ps[uid].name;
+      if (n && n !== MOI.proprio) { MOI.proprio = n; teteInvite(); QS.forEach(avisPaint); recap(); }
+    }, function () {});
+  }
+  // Sous la question : « Adri : b », « Pas comme toi » en toutes lettres quand ça diffère, puis sa nuance.
+  function devoilePaint(q) {
+    var p = revele ? proprio : null, v = p ? avisValeur(q, p) : null;
+    var note = v != null && typeof p.notes[q.id] === "string" ? p.notes[q.id].trim() : "", d = diverge(q, v);
+    var cle = JSON.stringify(v == null ? null : [nomDe(p), court(q, v), long(q, v), d, note]);
+    if (cle === q.avisCle) return;
+    q.avisCle = cle;
+    q.avisEl.textContent = "";
+    q.avisEl.hidden = v == null;
+    if (v == null) return;
+    q.avisEl.appendChild(h("span", { class: "avis-l" },
+      h("span", { class: "avis-p" + (d ? " diff" : "") + (q.type === "texte" ? " txt" : ""), title: long(q, v) }, nomDe(p) + " : ", h("b", { text: court(q, v) })),
+      d ? h("span", { class: "rrow-mark bq", text: "Pas comme toi" }) : null));
+    if (note) q.avisEl.appendChild(h("span", { class: "avis-l avis-n", text: "Sa nuance : " + coupe(note, 300) }));
+  }
+  // Une ligne « Nom : réponse » du bloc, avec ses marques et sa nuance (texte brut).
+  function ligneAvis(nom, q, v, d, nv, note, vide) {
+    return h("span", { class: "avis-l" + (d ? " diff" : "") }, nom + " : ", h("span", { class: "avis-v", text: v != null ? long(q, v) : vide }),
+      d ? h("span", { class: "rrow-mark bq", text: "Pas comme toi" }) : null,
+      v != null && v !== "toi" && TENIR[nv] ? h("span", { class: "rrow-mark", text: TENIR[nv] }) : null,
+      typeof note === "string" && note.trim() ? " (nuance : " + coupe(note.trim(), 200) + ")" : null);
+  }
+  // Le bilan du participant : les divergences d'abord, puis l'accord, les réponses libres des deux, et ce qui
+  // n'a de réponse que d'un côté (vide, ou masquée par une réponse précédente chez l'un des deux).
+  function devoileBloc() {
+    if (!revele) return null;
+    var p = proprio, Nom = nomDe({ proprio: true }), qui = MOI.proprio || "l'auteur du quiz";
+    var g = { div: [], ok: [], libre: [], seul: [] };
+    if (p) QS.forEach(function (q) {
+      var lui = avisValeur(q, p), moi = q.masq ? null : valeur(q);
+      if (lui == null && moi == null) return;
+      if (lui == null || moi == null) g.seul.push(q);
+      else if (q.type === "texte") g.libre.push(q);
+      else (diverge(q, lui) ? g.div : g.ok).push(q);
+    });
+    var sec = h("div", null, h("h3", { class: "vide-h" }, "Réponses " + de(qui)));
+    var a = g.div.length + g.ok.length + g.libre.length + g.seul.length;
+    sec.appendChild(h("p", { class: "rtenir", text: [
+      state.termine ? "Tes réponses sont envoyées : voici celles " + de(qui) + "."
+        : "Tu as modifié tes réponses depuis l'envoi : celles " + de(qui) + " restent affichées. Renvoie quand c'est prêt.",
+      proprioEtat === "attente" ? "Chargement…"
+        : proprioEtat === "err" ? "Ses réponses ne sont pas lisibles sur cette page pour l'instant."
+        : !a ? Nom + " n'a encore rien répondu : ses réponses s'afficheront ici dès qu'elles arrivent."
+        : g.div.length ? "Ça diverge sur " + g.div.length + (g.div.length > 1 ? " questions." : " question.")
+        : g.ok.length ? "Pas de divergence sur les choix." : "",
+      p && a && !p.termine ? Nom + " n'a pas encore envoyé : ses réponses peuvent encore changer." : ""
+    ].filter(Boolean).join(" ") }));
+    function groupe(titre, list, avecMoi) {
+      if (!list.length) return;
+      sec.appendChild(h("p", { class: "rv-h", text: titre + " (" + list.length + ")" }));
+      var ul = h("ul", { class: "rl" });
+      list.forEach(function (q) {
+        var lui = avisValeur(q, p), moi = q.masq ? null : valeur(q), d = diverge(q, lui);
+        var sub = h("span", { class: "rrow-sub" });
+        if (avecMoi) sub.appendChild(ligneAvis("Toi", q, moi, false, null, null, q.masq ? "masquée chez toi" : "pas de réponse"));
+        sub.appendChild(ligneAvis(Nom, q, lui, d, p.tenir[q.id], lui != null ? p.notes[q.id] : null,
+          p.masquees.indexOf(q.id) >= 0 ? "masquée chez " + qui : "pas de réponse"));
+        var t = h("span", { class: "rrow-t" }, q.titre, d ? h("span", { class: "rrow-mark bq", text: "Diverge" }) : null);
+        var num = h("span", { class: "rrow-num", text: q.id });
+        ul.appendChild(h("li", null, q.masq ? h("div", { class: "rrow fixe" }, num, t, sub)
+          : h("button", { type: "button", class: "rrow", "data-k": "devoile:" + q.id, onclick: function () { go(QS.indexOf(q)); } }, num, t, sub)));
+      });
+      sec.appendChild(ul);
+    }
+    groupe("Ça diverge", g.div, true);
+    groupe("D'accord", g.ok, false);
+    groupe("Réponses libres", g.libre, true);
+    groupe("D'un seul côté", g.seul, true);
+    if (p && p.autre) sec.appendChild(h("p", { class: "rnote", text: Nom + " ajoute : « " + coupe(p.autre, 400) + " »" }));
     return sec;
   }
 
@@ -2434,6 +2557,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       return;
     }
     var r, sansUid = false;
+    laDb = db;
     try { r = db.doc(MOI.invite ? "avis/" + MOI.id : "reponses/" + TOUR); } catch (err) {
       // Un id hors de la grammaire des chemins : pas de document à soi, lecture seule.
       MOI.ecrit = false; offline = true; teteInvite(); recap();
@@ -2486,7 +2610,12 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       }
       ref = r; ready = true;
       QS.forEach(function (q) { fill(q); paint(q, false); }); recap(); renderMsgs(); rcBanner();
-      if (MOI.invite) trouverProprio(db);
+      if (MOI.invite) {
+        trouverProprio(db);
+        // Avis déjà envoyé pour ce tour (ou déjà vu dans ce navigateur) : les réponses du propriétaire reviennent.
+        // Le repère local seul ne suffit pas : sans avis à soi en base (accès retiré, lecture seule), rien ne se dévoile.
+        if (d && (d.termine === true || dejaDevoile())) devoiler();
+      }
       else { ecouterMessages(db); ecouterRecadrage(db); ecouterBilan(db); ecouterAvis(db); }
       if (document.activeElement !== autre) { autre.value = state.autre; fit(autre); }
       if (state.approfondir && document.activeElement !== approTa && !approTa.value) { approTa.value = state.approfondir.texte; fit(approTa); faitEtat(); }

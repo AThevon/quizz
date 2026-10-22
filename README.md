@@ -1,6 +1,6 @@
 # /quizz
 
-Un skill Claude Code. Quand Claude a plusieurs questions à te poser (choix de design, arbitrages, priorités, réponses à envoyer), au lieu d'un pavé il publie un quiz cliquable dans un artefact claude.ai. Chaque option dit sa conséquence et Claude donne sa reco. Tu cliques « C'est bon » : Claude relit tes réponses, applique, et écrit dans la page ce qu'il a fait.
+Un skill Claude Code. Quand Claude a plusieurs questions à te poser (choix de design, arbitrages, priorités, réponses à envoyer), au lieu d'un pavé il publie un quiz cliquable dans un artefact claude.ai. Chaque option dit sa conséquence et Claude donne sa reco. Tu envoies : Claude relit tes réponses, applique, et écrit dans la page ce qu'il a fait.
 
 Marche dans Claude Code : le terminal ou l'onglet Code de l'app Claude desktop. Pas dans le chat claude.ai.
 
@@ -30,8 +30,8 @@ Pour recevoir les nouvelles versions : `/plugin`, onglet Marketplaces, `quizz`, 
 - Creuse (touche q) : demande à Claude d'expliquer une question sans quitter la page.
 - Recadrer (touche x) : si le quiz part de travers, dis ce qui cloche, Claude réécrit les questions.
 - Messages à envoyer (Slack, mail...) prêts à copier, dans ton ton. Rien n'est envoyé à ta place.
-- Après « C'est bon » : ce que Claude a appliqué, ses prédictions sur tes réponses, et « Approfondir » pour le tour suivant.
-- À plusieurs : partage le quiz (droit Contributeur), chacun répond de son côté, les divergences ressortent.
+- Après l'envoi : ce que Claude a appliqué, ses prédictions sur tes réponses, et « Approfondir » pour le tour suivant.
+- À plusieurs : partage le quiz (droit Contributeur), chacun répond de son côté sans voir les autres, puis les réponses et les divergences se dévoilent.
 - Un registre des décisions commun à tous tes projets.
 
 ## Prérequis
