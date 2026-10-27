@@ -15,6 +15,7 @@ __THEME__
   --gl: max(16px, env(safe-area-inset-left, 0px));
   --gr: max(16px, env(safe-area-inset-right, 0px));
   --ease-pose: cubic-bezier(.2, .9, .3, 1.25);
+  --ease-encre: cubic-bezier(.2, 0, 0, 1);
 }
 
 * { box-sizing: border-box; }
@@ -57,36 +58,67 @@ button { cursor: pointer; }
   flex-direction: column;
   overflow: hidden;
 }
-.rail-head { padding: 14px 18px 12px; border-bottom: 1px solid var(--line); }
-.count { display: flex; align-items: baseline; gap: 12px; }
-.count-n {
-  font-family: var(--title); font-weight: 500; font-size: 32px; line-height: 1; letter-spacing: -.01em;
-  font-variant-numeric: tabular-nums;
+/* Le rail montre ce qui reste, pas ce qu'on a répondu : un décompte en tête, des lignes qui se rangent une fois
+   répondues (titre discret, coche) et une lumière sur la question en cours. Seul un geste local anime. */
+.rail-head { display: flex; align-items: flex-end; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+/* Décompte : en police des tampons, sur deux chiffres ; chaque chiffre qui change roule. */
+.reste-n {
+  display: flex; flex: none; height: 56px; overflow: hidden;
+  font-family: var(--display); font-size: 56px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text);
 }
-.count-n .of { color: var(--muted); }
-.count-l { font-size: 14px; color: var(--text-2); }
-.segs { display: flex; gap: 3px; margin-top: 10px; }
-.seg { flex: 1; height: 4px; border-radius: calc(var(--r) * 2 / 12); background: var(--line); transition: background-color 160ms ease; }
+.dg { display: block; }
+.dg.roule { animation: roule 260ms var(--ease-pose) both; }
+@keyframes roule { from { transform: translateY(70%); opacity: 0; } }
+/* Le compte qui remonte arrive par le haut. */
+.dg.roule-haut { animation: roule-haut 260ms var(--ease-pose) both; }
+@keyframes roule-haut { from { transform: translateY(-70%); opacity: 0; } }
+/* Tout est tranché : une coche à la place du chiffre, tracée sur un geste. */
+.reste-chk { width: 44px; height: 38px; margin-top: 9px; overflow: visible; }
+.reste-chk path { fill: none; stroke: var(--accent); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 0; }
+.reste-n.trace .reste-chk path { animation: trace 320ms ease-out both; }
+.reste-l { min-width: 0; margin: 0; padding-bottom: 5px; font-family: var(--title); font-weight: 500; font-size: 15px; line-height: 1.25; color: var(--text-2); }
+.reste-l small { display: block; margin-top: 2px; font-family: var(--sans); font-weight: 400; font-size: 13px; color: var(--muted); }
+.vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
-.rail-list { flex: 1; overflow-y: auto; padding: 2px 8px 6px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
-.rail-group { margin: 10px 10px 2px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.rail-list {
+  position: relative; flex: 1; overflow-y: auto; padding: 4px 8px 8px 14px;
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
+.rail-group { margin: 12px 10px 4px 52px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .ri {
-  display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: 4px; row-gap: 0;
+  display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 8px; align-items: start;
   width: 100%; text-align: left; background: transparent; border: 0;
-  padding: 5px 10px; border-radius: calc(var(--r) * 8 / 12);
-  transition: background-color 140ms ease;
+  padding: 6px 10px; border-radius: calc(var(--r) * 8 / 12);
 }
-.ri:hover { background: var(--surface-2); }
-.ri[aria-current="true"] { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
-.ri-num { grid-row: span 2; font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--muted); padding-top: 3px; }
-.ri[aria-current="true"] .ri-num { color: var(--text); }
-.ri-title { font-size: 14px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
-.tag {
-  display: inline-flex; align-items: center; gap: 7px;
-  font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--ink, var(--muted));
+.ri-mark { position: relative; height: 19.6px; display: flex; align-items: center; }
+.ri-num { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.ri-chk { position: absolute; left: 1px; top: 3px; width: 16px; height: 14px; overflow: visible; }
+.ri-chk path { fill: none; stroke: var(--text-2); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; }
+.ri-body { min-width: 0; display: grid; gap: 2px; }
+.ri-title { font-size: 14px; line-height: 1.4; color: var(--text); text-wrap: pretty; overflow-wrap: anywhere; }
+.ri:hover .ri-title { color: var(--text); }
+/* Le seul signal d'attention : un point et quelques mots. */
+.ri-att { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; line-height: 1.3; color: var(--rasp); }
+.ri-att::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--rasp); }
+.ri-att[hidden] { display: none; }
+/* Répondue : la question se range, titre discret et coche à la place de l'identifiant. Tracée sur un geste, posée sinon. */
+.ri.ok .ri-title { color: var(--muted); }
+.ri.ok .ri-num { visibility: hidden; }
+.ri.ok:hover .ri-title { color: var(--text); }
+.ri.ok .ri-chk path { stroke-dashoffset: 0; }
+.ri.geste .ri-title { transition: color 220ms ease; }
+.ri.trace .ri-chk path { animation: trace 240ms ease-out 60ms both; }
+@keyframes trace { from { stroke-dashoffset: 20; } to { stroke-dashoffset: 0; } }
+/* En cours : l'accent sur l'identifiant (ou la coche), le titre en clair ; la lumière fait le reste. */
+.ri[aria-current="true"] .ri-num { color: var(--accent); }
+.ri[aria-current="true"] .ri-chk path { stroke: var(--accent); }
+.ri[aria-current="true"] .ri-title { color: var(--text); font-weight: 500; }
+/* La lumière : un trait d'accent posé dans la liste (il suit son défilement), déplacé par transform seulement. */
+.rail-lum {
+  position: absolute; left: 5px; top: 0; width: 3px; height: 100px; border-radius: 2px; background: var(--accent);
+  transform-origin: 50% 0; opacity: 0; pointer-events: none;
+  transition: transform 280ms cubic-bezier(.2, 0, 0, 1), opacity 160ms ease;
 }
-.tag::before { content: ""; width: 8px; height: 8px; border-radius: calc(var(--r) * 2 / 12); background: var(--ink, transparent); border: 1.5px solid var(--ink, var(--control)); }
 
 [data-state="reco"]    { --ink: var(--sun); }
 [data-state="ecart"]   { --ink: var(--rasp); }
@@ -337,15 +369,13 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; b
 }
 
 /* ---------- Conditionnelles, bloquantes, j'y tiens, prédictions ---------- */
-.q[hidden], .ri[hidden], .pill[hidden], .seg[hidden], .group[hidden], .rail-group[hidden], .tenir[hidden], .express[hidden] { display: none; }
+.q[hidden], .ri[hidden], .pill[hidden], .group[hidden], .rail-group[hidden], .tenir[hidden], .express[hidden] { display: none; }
 .q.q-in { animation: q-in 260ms ease-out both; }
 @keyframes q-in { from { opacity: 0; transform: translateY(8px); } }
 .bloq {
   margin-left: 10px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap;
   color: var(--rasp); border: 1.5px solid var(--rasp); border-radius: calc(var(--r) * 6 / 12); padding: 1px 7px;
 }
-.ri-meta { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.ri-bloq { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--rasp); }
 .tenir { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .tn, .sq-btn {
   background: none; border: 1.5px solid var(--control); border-radius: calc(var(--r) * 8 / 12); padding: 4px 12px;
@@ -413,17 +443,57 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; b
   background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--sky); border-radius: calc(var(--r) * 12 / 12);
 }
 .cr:focus, .cr:focus-visible { outline: none; }
+/* Le liseré reste vif tant que Claude a la parole (rien encore, attente, écriture) ; une réponse finie ou interrompue
+   le calme. La transition ne joue que sur une fin vue en direct (classe calme, posée par le geste). */
+.cr.fixe { border-left-color: var(--line); }
+.cr.calme { transition: border-left-color 400ms ease; }
 .cr h4 { margin: 0 0 4px; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .cr-lead { margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
-.cr-hist, .cr-live { margin-top: 14px; }
+.cr-hist { margin-top: 14px; }
 .cr-hist > * + * { margin-top: 14px; }
 .cr-old > .cr-e { margin-top: 12px; }
 .cr-old summary { cursor: pointer; width: fit-content; font-size: 14px; color: var(--text-2); }
 .cr-old summary:hover { color: var(--text); }
 .cr-q { margin: 0; font-size: 14px; font-weight: 600; color: var(--sky); }
-.cr-a { margin-top: 4px; max-width: 40em; font-size: 15px; line-height: 1.55; color: var(--text); white-space: pre-line; overflow-wrap: anywhere; }
-.cr-a.attente { color: var(--muted); }
+.cr-a { margin-top: 4px; }
+/* Sous une réponse finie : qui l'a écrite, quand, et Copier. */
+.cr-pied { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 8px; }
+.cr-pied[hidden] { display: none; }
+.cr-sig { font-family: var(--mono); font-size: 12px; line-height: 1.5; color: var(--muted); }
+.cr-sig b { font-weight: 700; color: var(--sky); }
+.cr-copier {
+  background: none; border: 1.5px solid var(--control); border-radius: calc(var(--r) * 8 / 12); padding: 2px 10px;
+  font-size: 13px; color: var(--text-2); transition: border-color 140ms ease, color 140ms ease;
+}
+.cr-copier:hover { border-color: var(--text-2); color: var(--text); }
 .cr-zone { margin-top: 16px; }
+
+/* ---------- Ce que Claude écrit ---------- */
+/* Mise en page des réponses : paragraphes, puces à marqueur fin, gras, code. L'attente dit ce que Claude fait, avec un
+   trait d'accent qui bat ; pendant l'écriture le trait suit le dernier mot, sans battre. */
+.cl { max-width: 62ch; font-size: 15.5px; line-height: 1.6; color: var(--text); overflow-wrap: anywhere; }
+.cl > * { margin: 0; }
+.cl > * + * { margin-top: .65em; }
+.cl ul { padding: 0; list-style: none; display: flex; flex-direction: column; gap: .35em; }
+.cl li { position: relative; padding-left: 1.15em; }
+.cl li::before { content: ""; position: absolute; left: .1em; top: .8em; width: .5em; height: 1.5px; background: var(--muted); }
+.cl strong, .cl-i strong { font-weight: 600; }
+.cl code, .cl-i code {
+  font-family: var(--mono); font-size: .86em; padding: 1px 5px; border-radius: calc(var(--r) * 4 / 12);
+  background: var(--surface-2); color: var(--text); overflow-wrap: anywhere;
+}
+.cl-att { color: var(--muted); }
+.cl-caret { display: inline-block; width: 2px; height: 1.05em; margin-left: 2px; vertical-align: -.15em; background: var(--sky); border-radius: 1px; }
+@media (prefers-reduced-motion: no-preference) {
+  .attend .cl-caret { animation: cl-bat 1s steps(1) infinite; }
+  @keyframes cl-bat { 50% { opacity: 0; } }
+  /* L'encre : chaque mot monte de 3 px en fondu ; un bloc (paragraphe, puce) se pose. */
+  .cl-m { display: inline-block; animation: cl-encre 240ms var(--ease-encre) both; }
+  @keyframes cl-encre { from { opacity: 0; transform: translateY(3px); } }
+  .cl-in { animation: cl-pose 260ms var(--ease-pose) both; }
+  .cl-pied { animation: cl-pose 220ms var(--ease-encre) both; }
+  @keyframes cl-pose { from { opacity: 0; transform: translateY(6px); } }
+}
 .cr-asks { display: flex; flex-direction: column; gap: 6px; }
 .cr-ask {
   width: 100%; text-align: left; background: var(--bg); border: 1.5px solid var(--control); border-radius: calc(var(--r) * 10 / 12);
@@ -472,8 +542,8 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 .sq-btn[aria-busy="true"] { color: var(--muted); border-color: var(--line); cursor: default; }
 .sq-note { margin: 8px 0 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
 .sq-note.err { color: var(--rasp); }
-/* L'état d'une question à plusieurs, dans le vocabulaire de .tag (repère et texte, sans cadre : le cadre rouge reste à
-   « Bloquant »). Le repère change de forme pour se lire sans la couleur : plein (divergence), creux (rouverte),
+/* L'état d'une question à plusieurs, sous la question et dans le bilan (repère et texte, sans cadre : le cadre rouge
+   reste à « Bloquant »). Le repère change de forme pour se lire sans la couleur : plein (divergence), creux (rouverte),
    rond (à discuter), coche (réglée). */
 .sq-mark {
   display: inline-flex; align-items: center; gap: 7px; margin-right: 10px;
@@ -488,14 +558,10 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 .sq-n[data-etat="divergence"], .sq-mark[data-etat="divergence"], .sq-mark[data-etat="rouverte"] { --ink: var(--rasp); }
 .sq-n[data-etat="reglee"], .sq-mark[data-etat="reglee"] { --ink: var(--sky); }
 .sq-n[data-etat="discuter"], .sq-mark[data-etat="discuter"] { --ink: var(--lilac); }
-/* Rail : l'état à plusieurs prend la place de l'étiquette de reco, qui passe en discret tant que le bandeau est là. */
-.ri-meta .sq-mark { margin-right: 0; font-size: 11px; }
-.ri-meta .tag[hidden] { display: none; }
 /* Bilan : l'état de chaque question avec la même marque ; le rouge ne reste qu'à « Pas comme toi » sur ce qui est ouvert. */
 .rrow-t .sq-mark { margin-right: 10px; }
 .recap .avis-l.diff .avis-v { color: var(--text); }
 .rrow[data-etat="reglee"] .rrow-mark.bq, .rrow[data-etat="discuter"] .rrow-mark.bq { color: var(--muted); }
-.app[data-squad] .ri .tag { --ink: var(--muted); }
 .avis-etat { color: var(--text-2); overflow-wrap: anywhere; }
 .avis-c { color: var(--text-2); overflow-wrap: anywhere; }
 .fin-aide { margin: 0; font-size: 14px; line-height: 1.45; color: var(--text-2); max-width: 36em; }
@@ -657,8 +723,9 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 .ap-res { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .ap-res:empty { display: none; }
 .ap-res .sq-note { margin: 0; }
-/* Le pied du panneau (« Appliquer ») reste collé en bas de la carte qui défile ; un résultat de recherche s'arrête au-dessus. */
-#ap .rc-actions {
+/* Le pied du panneau (« Appliquer », « Envoyer quand même ») reste collé en bas de la carte qui défile ; un résultat de
+   recherche s'arrête au-dessus. */
+#ap .rc-actions, #imp .rc-actions {
   position: sticky; bottom: calc(-28px * var(--d)); z-index: 1;
   margin: 16px calc(-30px * var(--d)) calc(-28px * var(--d)); padding: 12px calc(30px * var(--d)) calc(14px * var(--d));
   background: var(--surface); border-top: 1px solid var(--line);
@@ -677,6 +744,37 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   color: var(--sky); border: 1.5px solid var(--sky); border-radius: calc(var(--r) * 6 / 12); padding: 1px 7px;
 }
 
+/* ---------- Ce que ça implique ---------- */
+/* Récap d'un participant avant l'envoi : une entrée par question (ou « autre chose »), le contexte en une ligne, puis
+   le poids en étiquette mono à carré et la phrase. Ce que Claude écrit garde son rendu (cl-i) et sa signature. */
+/* Ancré en haut : quand la réponse de Claude arrive, la carte grandit vers le bas sans remonter sous les yeux. */
+#imp { place-items: start center; padding-top: max(24px, 8dvh); }
+#imp .rc-card { max-height: calc(100dvh - max(24px, 8dvh) - 24px); }
+.imp-e { margin-top: calc(14px * var(--d)); padding-top: calc(12px * var(--d)); border-top: 1px solid var(--line); }
+.imp-e:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.imp-e .ap-qt { margin-bottom: 2px; }
+.imp-ctx { margin: 0; font-size: 14px; line-height: 1.45; color: var(--text-2); overflow-wrap: anywhere; }
+.imp-l { margin: 6px 0 0; max-width: 62ch; font-size: 15px; line-height: 1.55; color: var(--text); overflow-wrap: anywhere; }
+.imp-cl .cr-sig { display: block; margin-top: 4px; }
+.imp-att { margin: calc(14px * var(--d)) 0 0; font-size: 15px; line-height: 1.55; }
+.imp-e + .imp-att { padding-top: calc(12px * var(--d)); border-top: 1px solid var(--line); }
+#imp-corps .sq-note { margin-top: 12px; }
+/* Le poids : un carré et un mot, à l'encre du poids (léger et inconnu discrets, inconnu en creux). */
+.imp-poids {
+  display: inline-flex; align-items: center; gap: 6px; margin-right: 8px;
+  font-family: var(--mono); font-size: 12px; font-weight: 700; line-height: 1; white-space: nowrap; color: var(--ink);
+}
+.imp-poids::before { content: ""; flex: none; width: 7px; height: 7px; background: var(--ink); border: 1.5px solid var(--ink); border-radius: calc(var(--r) * 2 / 12); }
+.imp-poids[data-poids="leger"], .imp-poids[data-poids="inconnu"] { --ink: var(--muted); }
+.imp-poids[data-poids="moyen"] { --ink: var(--sun); }
+.imp-poids[data-poids="lourd"] { --ink: var(--rasp); }
+.imp-poids[data-poids="inconnu"]::before { background: none; }
+.imp-k { margin-right: 6px; font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text); }
+/* Chez le propriétaire : « Ce que Claude a dit à Alex : », sous la divergence et dans le bilan. */
+.imp-avis { color: var(--text-2); overflow-wrap: anywhere; }
+.imp-avis .imp-poids { margin-left: 2px; }
+.imp-sig { color: var(--muted); }
+
 /* ---------- Mobile ---------- */
 @media (max-width: 899px) {
   body { font-size: 16px; }
@@ -689,18 +787,26 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     padding: 10px var(--gr) 10px var(--gl);
     background: var(--bg); border-bottom: 1px solid var(--line);
   }
-  .mini-count { font-family: var(--title); font-weight: 500; font-size: 26px; line-height: 1; letter-spacing: -.01em; flex: none; min-width: 50px; }
-  .mini-count .of { color: var(--muted); }
-  .pills { flex: 1; display: flex; justify-content: space-between; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 4px 2px; }
+  /* Même décompte que le rail, en petit. */
+  .mini-count { display: flex; align-items: center; gap: 7px; flex: none; }
+  .mini-count .reste-n { height: 28px; font-size: 28px; }
+  .mini-count .reste-chk { width: 22px; height: 19px; margin-top: 5px; }
+  .mini-count .reste-l { padding: 0; font-family: var(--sans); font-weight: 400; font-size: 12px; line-height: 1.15; color: var(--muted); white-space: nowrap; }
+  @media (max-width: 420px) { .mini-count .reste-l { display: none; } }
+  .pills { flex: 1; display: flex; justify-content: space-between; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 4px; }
+  /* Même règle que le rail : vide en contour, répondue pleine et neutre, en cours en anneau d'accent, un point pour l'attention. */
   .pill {
-    flex: none; width: 32px; height: 32px; border-radius: 50%;
+    position: relative; flex: none; width: 32px; height: 32px; border-radius: 50%;
     display: grid; place-items: center;
     font-family: var(--mono); font-size: 13px; font-weight: 700;
-    border: 1.5px solid var(--control); background: transparent; color: var(--text-2);
-    transition: background-color 140ms ease, border-color 140ms ease;
+    border: 1.5px solid var(--control); background: transparent; color: var(--text);
   }
-  .pill[data-state]:not([data-state="vide"]) { background: var(--ink); border-color: var(--ink); color: var(--on-state); }
-  .pill[aria-current="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text); }
+  .pill[data-state]:not([data-state="vide"]) { background: var(--line); border-color: var(--line); color: var(--text-2); }
+  .pill[aria-current="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+  .pill[data-att]::after {
+    content: ""; position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--rasp); box-shadow: 0 0 0 2px var(--bg);
+  }
   main { padding-block: 28px 120px; }
   .intro { font-size: 16px; }
   .group { margin-top: calc(56px * var(--d)); }
@@ -718,12 +824,6 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   .opt-tags { grid-column: 2; grid-row: 1; justify-self: start; }
   .opt .otext { grid-column: 2; }
   .opt.has-reco .key, .opt.has-tag .key { grid-row: 1 / span 2; align-self: center; }
-  /* À plusieurs : les pastilles disent l'état de l'équipe (liseré), la couleur de reco passe en discret. */
-  .app[data-squad] .pill[data-state]:not([data-state="vide"]) { background: var(--surface-2); border-color: var(--control); color: var(--text); }
-  .pill[data-sq="divergence"], .pill[data-sq="rouverte"] { --sq: var(--rasp); }
-  .pill[data-sq="discuter"] { --sq: var(--lilac); }
-  .pill[data-sq="reglee"] { --sq: var(--sky); }
-  .app[data-squad] .pill[data-sq][data-state] { border: 2px solid var(--sq); }
   .fin { margin-top: calc(72px * var(--d)); scroll-margin-top: 80px; }
   .fin-cta .btn-fin { width: 100%; }
 }
@@ -731,8 +831,9 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 @media (hover: none) { .keys-btn:not(.rc-btn), .keys-hint, .rc-btn kbd, .cr-btn kbd { display: none; } }
 /* Au doigt : des cibles d'au moins 44 px ; les liens de la ligne « J'y tiens » grandissent sans changer la ligne. */
 @media (pointer: coarse) {
-  .tn, .cr-btn, .sq-btn, .arb-out, .arb-tr, .express, .cr-ask, .btn-copy, .btn-reset, .keys-close, .mini-rc, .seul summary, .msg-sent, .rc-opts .opt { min-height: 44px; }
+  .tn, .cr-btn, .sq-btn, .arb-out, .arb-tr, .express, .cr-ask, .cr-copier, .btn-copy, .btn-reset, .keys-close, .mini-rc, .seul summary, .msg-sent, .rc-opts .opt { min-height: 44px; }
   .btn-reset, .msg-sent, .seul summary { display: inline-flex; align-items: center; }
+  .btn-reset[hidden], .msg-sent[hidden] { display: none; }
   .msg-sent input { width: 22px; height: 22px; }
   .pill { width: 40px; height: 40px; }
   .rtenir button { padding: 11px 6px; margin: -11px -2px; }
@@ -794,8 +895,8 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 <div class="app">
   <aside class="rail" aria-label="Sommaire des questions">
     <div class="rail-head">
-      <div class="count"><span class="count-n" id="count-n"></span><span class="count-l">tranchées</span></div>
-      <div class="segs" id="segs" aria-hidden="true"></div>
+      <span class="reste-n" id="reste-n" aria-hidden="true"></span>
+      <p class="reste-l"><span class="vh" id="reste-sr"></span><span id="reste-t">à trancher</span><small id="reste-s"></small></p>
     </div>
     <nav class="rail-list" id="rail-list"></nav>
     <div class="rail-foot">
@@ -808,7 +909,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 
   <main id="main">
     <nav class="mini" aria-label="Avancement">
-      <span class="mini-count" id="mini-count"></span>
+      <span class="mini-count" id="mini-count"><span class="reste-n" id="mini-n" aria-hidden="true"></span><span class="reste-l" id="mini-t" aria-hidden="true">à trancher</span><span class="vh" id="mini-sr"></span></span>
       <div class="pills" id="pills"></div>
       <button class="mini-rc" type="button" data-recadrer data-proprio>Recadrer</button>
     </nav>
@@ -928,10 +1029,25 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   </div>
 </div>
 
+<div class="keys" id="imp" role="dialog" aria-modal="true" aria-labelledby="imp-h" aria-describedby="imp-lead" hidden>
+  <div class="keys-card rc-card">
+    <div class="keys-top">
+      <h2 id="imp-h">Ce que ça implique</h2>
+      <button class="keys-close" type="button" id="imp-close">Fermer</button>
+    </div>
+    <p class="rc-lead" id="imp-lead">Avant que ça parte : ce que certains points de ton avis demanderaient. Pour info, rien ne bloque l'envoi.</p>
+    <div id="imp-corps"></div>
+    <div class="rc-actions">
+      <button class="btn-fin" type="button" id="imp-go">Envoyer quand même</button>
+      <button class="btn-reset" type="button" id="imp-revoir">Revoir</button>
+    </div>
+  </div>
+</div>
+
 <script id="quiz-data" type="application/json">__DATA__</script>
 <script>
 // Données : { nom, eyebrow?, titre, intro?, seul?: [texte], tour?, questions: [{ id, groupe?, titre, contexte?, image?,
-//   type: "choix" | "multi" | "texte", cadrage?, delegable?, options?: [{ k, texte, reco? }],
+//   type: "choix" | "multi" | "texte", cadrage?, delegable?, options?: [{ k, texte, reco?, implique?: { poids, texte } }],
 //   si?: {id: clé | [clés]}, bloquant?, prediction?: clé | [clés] }],
 //   messages?: [{ id, pour, ou?, pourquoi?, format: "slack" | "markdown" | "texte", texte, lien? }], messages_apres?,
 //   recadre?: { le, resume }, precedent?: { tour, resume }, contexte?: texte de fond pour Creuse } ; chaque question peut aussi avoir fond?.
@@ -944,7 +1060,9 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 //   syntheses?: {id: { le, terrain, texte, cle, empreinte }} (proposées par Claude depuis la page),
 //   attendus?: [uid] (qui il attend encore), attend?: [id] (questions qui attendent, posé par « Appliquer ») }.
 // À plusieurs : un participant (pas propriétaire) écrit avis/<son id> = { uid, majLe, tours: { <tour>: mêmes champs sans
-// messages, recadrages, approfondir ni uid } } (son id, jamais son nom : la règle avis/{self} lui réserve ce document).
+// messages, recadrages, approfondir ni uid, plus implique?: {id | "autre": { poids, texte, source: "quiz" | "claude",
+// cle, le, quiz? }} (ce que le récap « Ce que ça implique » lui a montré avant l'envoi) et revenu?: {id: { de, le }}
+// (revenu à la réponse du propriétaire après ce récap) } } (son id, jamais son nom : la règle avis/{self} lui réserve ce document).
 // Le propriétaire met son uid dans reponses/<tour>. Un participant relit : dès l'ouverture, il lit reponses/<tour> en direct
 // et voit sous chaque question la réponse et la nuance du propriétaire ; il ne répond que là où il n'est pas d'accord
 // (une question laissée vide vaut accord). L'état de chaque question (accord, divergence, réglée, rouverte, à discuter)
@@ -989,9 +1107,17 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     { k: "b", texte: "Pas tout à fait : je précise dans la nuance", preciser: true },
     { k: "c", texte: "Non, on n'est pas sur la même longueur d'onde : recadrer", recadre: true }
   ];
+  // Ce qu'une option implique côté code (écrit par la session Claude Code à la création du quiz) : jamais affiché sur
+  // les options, seulement dans le récap « Ce que ça implique » d'un participant. inconnu : seulement chez Claude.
+  var POIDS = { leger: "léger", moyen: "moyen", lourd: "lourd", inconnu: "inconnu" };
+  var POIDS_RANG = { inconnu: 0, leger: 1, moyen: 2, lourd: 3 };
+  function impliqueDe(x) {
+    return x && typeof x === "object" && (x.poids === "leger" || x.poids === "moyen" || x.poids === "lourd") &&
+      typeof x.texte === "string" && x.texte.trim() ? { poids: x.poids, texte: x.texte.trim() } : null;
+  }
   var QS = QUIZ.questions.map(function (q) {
     var type = q.cadrage ? "choix" : q.type || "choix";
-    var opts = q.cadrage ? CADRAGE.slice() : (q.options || []).map(function (o) { return { k: o.k, texte: o.texte, reco: !!o.reco }; });
+    var opts = q.cadrage ? CADRAGE.slice() : (q.options || []).map(function (o) { return { k: o.k, texte: o.texte, reco: !!o.reco, implique: impliqueDe(o.implique) }; });
     if (type === "choix" && !q.cadrage && q.delegable !== false) opts.push({ k: "toi", texte: "À toi de voir", toi: true });
     // si : {id: [clés]}, toutes les conditions doivent tenir. prediction : jamais montrée avant l'envoi.
     var si = null;
@@ -1012,7 +1138,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   QS.forEach(function (q) { PAR_ID[q.id] = q; });
   var CONDITIONNEL = QS.some(function (q) { return q.si; });
   var state = { reponses: {}, notes: {}, autre: "", termine: false, finiLe: null, messages: {}, recadrages: [], tenir: {}, approfondir: null, creuse: {},
-    arbitrages: {}, syntheses: {}, attendus: [], attend: null, nuancesLues: null };
+    arbitrages: {}, syntheses: {}, attendus: [], attend: null, nuancesLues: null, implique: {}, revenu: {} };
   var touched = false;
 
   function valeur(q) { return valeurDe(q, state.reponses); }
@@ -1044,7 +1170,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     if (q.type === "multi") { var n = valeur(q).length; return n + (n > 1 ? " choisies" : " choisie"); }
     return q.type === "texte" ? "Répondu" : "Choisi";
   }
-  var TAG = { vide: "Vide", reco: "Reco", ecart: "Écart", toi: "À toi", fait: "Répondu" };
+  // L'encre de chaque état, pour les tampons (le rail et les pastilles restent neutres).
   var INK = { vide: "var(--line)", reco: "var(--sun)", ecart: "var(--rasp)", toi: "var(--lilac)", fait: "var(--sky)" };
   var TYPE_HINT = { choix: "Une réponse", multi: "Plusieurs réponses possibles", texte: "Réponse libre" };
 
@@ -1114,10 +1240,199 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     empty_completion: "Pas de réponse : reformule, ou demande moins à la fois."
   };
   function coupe(s, n) { return s.length > n ? s.slice(0, n) + "…" : s; }
-  // Texte brut : pas de tiret cadratin (en début de ligne il devient une puce, ailleurs une virgule), ni gras ni titres.
+  // Texte de Claude : pas de tiret cadratin (en début de ligne il devient une puce, ailleurs une virgule), titres réduits
+  // à du texte. Le gras et le code restent : le rendu (clDecoupe) les met en forme.
+  // Un texte à copier pour quelqu'un (message à discuter) : propre, et sans marqueurs de gras.
+  function sansGras(t) { return propre(t).replace(/\*\*/g, ""); }
   function propre(t) {
     return String(t).replace(/^([ \t]*)\u2014[ \t]*/gm, "$1- ").replace(/[ \t]*\u2014[ \t]*/g, ", ")
-      .replace(/\*\*/g, "").replace(/^#{1,6}[ \t]+/gm, "");
+      .replace(/^#{1,6}[ \t]+/gm, "");
+  }
+
+  /* ---------- Ce que Claude écrit ---------- */
+  // Mini-rendu sûr : tout passe par des nœuds texte, rien n'est jamais lu comme du HTML. Paragraphes séparés par une
+  // ligne vide (les lignes d'un paragraphe sont jointes), puces « - » ou « * » (un marqueur encore seul n'ouvre pas de
+  // puce vide), **gras**, `code`. Un ** ou un ` encore ouvert met la suite en gras ou en code, sans montrer le marqueur.
+  // clDecoupe rend { blocs: [{ t: "p" | "ul", f: [feuille] }], n } ; feuille = { n0, n, segs: [{ b, c, m: [mots] }] }.
+  // Les mots (un mot garde ses espaces de fin) sont numérotés dans l'ordre de lecture : ce numéro sert au rendu comme
+  // à l'âge des mots, sur la même découpe des deux côtés.
+  function clFeuilleDe(s, n0) {
+    var segs = [], b = false, i = 0, buf = "", n = n0;
+    function pousse(txt, c) {
+      if (!txt) return;
+      var m = txt.match(/\S+\s*|\s+/g) || [];
+      segs.push({ b: b, c: c, m: m });
+      n += m.length;
+    }
+    while (i < s.length) {
+      var ch = s.charAt(i);
+      if (ch === "`") {
+        pousse(buf, false); buf = "";
+        var j = s.indexOf("`", i + 1);
+        pousse(j < 0 ? s.slice(i + 1) : s.slice(i + 1, j), true);
+        i = j < 0 ? s.length : j + 1;
+      } else if (ch === "*" && s.charAt(i + 1) === "*") { pousse(buf, false); buf = ""; b = !b; i += 2; }
+      else { buf += ch; i++; }
+    }
+    pousse(buf, false);
+    return { n0: n0, n: n - n0, segs: segs };
+  }
+  function clDecoupe(txt) {
+    var blocs = [], cur = null, n = 0;
+    String(txt).split("\n").forEach(function (l) {
+      if (/^[ \t]*[-*\u2022][ \t]*$/.test(l)) return;
+      var m = /^[ \t]*[-*\u2022][ \t]+(.*)$/.exec(l);
+      if (m) { if (!cur || cur.t !== "ul") blocs.push(cur = { t: "ul", l: [] }); cur.l.push(m[1]); }
+      else if (!/\S/.test(l)) cur = null;
+      else if (cur && cur.t === "ul" && /^[ \t]/.test(l)) cur.l[cur.l.length - 1] += " " + l;
+      // Une ligne numérotée (« 1. ») ouvre son propre paragraphe au lieu d'être jointe à la précédente.
+      else if (cur && cur.t === "p" && !/^[ \t]*\d+[.)][ \t]/.test(l)) cur.l[0] += " " + l;
+      else blocs.push(cur = { t: "p", l: [l] });
+    });
+    blocs.forEach(function (b) {
+      b.f = b.l.map(function (s) { var f = clFeuilleDe(s.replace(/\s+/g, " ").trim(), n); n += f.n; return f; });
+    });
+    return { blocs: blocs, n: n };
+  }
+  // Une feuille (paragraphe, puce, ou texte en ligne) en nœuds. age(i) : l'âge du mot i en ms (négatif s'il doit
+  // encore attendre), null sans animation. Un mot de moins de 260 ms est enveloppé (cl-m), son délai égal à son âge en
+  // négatif : un nouveau rendu reprend son animation où elle en était. Seul le mot l'est, pas ses espaces : la coupure
+  // des lignes reste celle du texte simple.
+  function clFeuille(el, f, age) {
+    var i = f.n0;
+    f.segs.forEach(function (s) {
+      var box = el, txt = "";
+      if (s.b) box = box.appendChild(document.createElement("strong"));
+      if (s.c) box = box.appendChild(document.createElement("code"));
+      s.m.forEach(function (mot) {
+        var a = age ? age(i) : null, w = /^\S+/.exec(mot);
+        i++;
+        if (a == null || a >= 260 || !w) { txt += mot; return; }
+        if (txt) box.appendChild(document.createTextNode(txt));
+        box.appendChild(h("span", { class: "cl-m" }, w[0])).style.animationDelay = Math.round(-a) + "ms";
+        txt = mot.slice(w[0].length);
+      });
+      if (txt) box.appendChild(document.createTextNode(txt));
+    });
+    return el;
+  }
+  // Un texte court de Claude, en ligne (synthèse, raison relevée) : gras et code, sans blocs.
+  function clInline(s) { return clFeuille(document.createDocumentFragment(), clFeuilleDe(String(s), 0), null); }
+  function clCle(f) { return f.n0 + JSON.stringify(f.segs); }
+  // Écrit le découpage D dans w.el en gardant les blocs qui n'ont pas changé : en direct, seul le dernier est refait à
+  // chaque image. o.anim : les mots et les blocs récents (w.nes, w.blocNes) animent ; o.caret : le trait va dans le
+  // dernier bloc, après le dernier mot.
+  function clPeindre(w, D, o) {
+    var now = performance.now(), anim = !!o.anim && !RM.matches, el = w.el, vu = w.vu, dernier = null;
+    var age = anim ? function (i) { return w.nes[i] == null ? null : now - w.nes[i]; } : null;
+    function poser(node, k) {
+      if (!anim) return;
+      if (w.blocNes[k] == null) w.blocNes[k] = now;
+      var a = now - w.blocNes[k];
+      if (a < 280) { node.className = "cl-in"; node.style.animationDelay = Math.round(-a) + "ms"; }
+    }
+    D.blocs.forEach(function (b, bi) {
+      var v = vu[bi];
+      if (!v || v.t !== b.t) {
+        var vide = h(b.t === "ul" ? "ul" : "p");
+        if (v) el.replaceChild(vide, v.node); else el.appendChild(vide);
+        v = vu[bi] = { t: b.t, node: vide, k: null, f: [] };
+      }
+      if (b.t === "p") {
+        var k = clCle(b.f[0]);
+        if (v.k !== k) {
+          var p = clFeuille(h("p"), b.f[0], age);
+          poser(p, "p" + bi);
+          el.replaceChild(p, v.node);
+          v.node = p; v.k = k;
+        }
+        dernier = v.node;
+        return;
+      }
+      b.f.forEach(function (f, fi) {
+        var x = v.f[fi], k = clCle(f);
+        if (!x || x.k !== k) {
+          var li = clFeuille(h("li"), f, age);
+          poser(li, "l" + bi + "." + fi);
+          if (x) v.node.replaceChild(li, x.node); else v.node.appendChild(li);
+          x = v.f[fi] = { k: k, node: li };
+        }
+        dernier = x.node;
+      });
+      while (v.f.length > b.f.length) v.node.removeChild(v.f.pop().node);
+    });
+    while (vu.length > D.blocs.length) el.removeChild(vu.pop().node);
+    if (o.caret) (dernier || el).appendChild(w.caret);
+    else if (w.caret && w.caret.parentNode) w.caret.parentNode.removeChild(w.caret);
+  }
+  // Un texte fini, sans animation (historique, rechargement).
+  function clTexte(el, txt) { clPeindre({ el: el, vu: [] }, clDecoupe(txt), {}); return el; }
+  // La plume : écrit le flux reçu (recu), qui arrive par à-coups, à un débit régulier. Le tampon se vide en 450 ms au
+  // plus, entre 84 et 540 caractères par seconde (environ 14 à 90 mots), et l'affichage s'arrête toujours en fin de mot
+  // (un dernier mot encore incomplet attend la suite, sauf à la fin du flux). Mouvement réduit : tout, tout de suite.
+  function plume(el) {
+    return { el: el, vu: [], nes: [], blocNes: {}, n: 0, recu: "", montre: "", acc: 0, t: 0, raf: 0, fin: false, surFin: null,
+      caret: h("span", { class: "cl-caret", "aria-hidden": "true" }) };
+  }
+  function plumeMontrer(w, txt, now) {
+    var D = clDecoupe(txt);
+    for (var i = w.n; i < D.n; i++) w.nes[i] = now;
+    if (D.n > w.n) w.n = D.n;
+    w.montre = txt;
+    clPeindre(w, D, { anim: true, caret: true });
+  }
+  function plumeEcrire(w) {
+    if (w.raf) return;
+    w.raf = requestAnimationFrame(function pas(now) {
+      w.raf = 0;
+      var r = w.recu, m = w.montre.length, dt = w.t ? Math.min(64, now - w.t) : 16, recule = false;
+      w.t = now;
+      // Le texte reçu a changé en amont (nettoyage) : on repart du début commun.
+      if (r.slice(0, m) !== w.montre) { var p = 0; while (p < m && r.charAt(p) === w.montre.charAt(p)) p++; m = p; recule = true; }
+      var cible = m;
+      if (RM.matches) cible = r.length;
+      else if (r.length > m) {
+        w.acc = Math.min(600, w.acc + Math.min(540, Math.max(84, (r.length - m) / 0.45)) * dt / 1000);
+        if (w.acc >= 1) cible = m + Math.floor(w.acc);
+        while (cible > m && cible < r.length && /\S/.test(r.charAt(cible))) cible++;
+        if (cible >= r.length && !w.fin) while (cible > m && /\S/.test(r.charAt(cible - 1))) cible--;
+      }
+      if (cible > m || recule) { w.acc = Math.max(0, w.acc - (cible - m)); plumeMontrer(w, r.slice(0, cible), now); }
+      var reste = r.slice(w.montre.length);
+      if (!reste || !w.fin && !/\s/.test(reste)) {
+        w.t = 0;
+        if (!reste && w.fin && w.surFin) { var f = w.surFin; w.surFin = null; f(); }
+        return;
+      }
+      w.raf = requestAnimationFrame(pas);
+    });
+  }
+  function plumeArret(w) { if (w.raf) cancelAnimationFrame(w.raf); w.raf = 0; w.t = 0; w.surFin = null; }
+  // Une réponse arrivée d'un bloc (sample.json) ne simule pas de frappe : ses mots se posent en cascade (350 ms en
+  // tout) et leur bloc se pose avec eux. Seulement sur la réponse à un geste d'ici ; mouvement réduit : rien. L'effet
+  // fini, les enveloppes partent : un bloc masqué puis remontré (filtre, repli) ne le rejoue pas.
+  function cascade(bloc, cibles) {
+    if (RM.matches || !bloc) return;
+    var noeuds = [], mots = 0, i = 0, spans = [];
+    Array.prototype.forEach.call(cibles, function (el) {
+      var tw = document.createTreeWalker(el, 4, null), t;
+      while ((t = tw.nextNode())) { noeuds.push(t); mots += (t.nodeValue.match(/\S+/g) || []).length; }
+    });
+    noeuds.forEach(function (t) {
+      var f = document.createDocumentFragment();
+      (t.nodeValue.match(/\S+|\s+/g) || []).forEach(function (m) {
+        if (!/\S/.test(m)) { f.appendChild(document.createTextNode(m)); return; }
+        var sp = f.appendChild(h("span", { class: "cl-m" }, m));
+        sp.style.animationDelay = Math.round(i++ / Math.max(1, mots) * 350) + "ms";
+        spans.push(sp);
+      });
+      t.parentNode.replaceChild(f, t);
+    });
+    bloc.classList.add("cl-in");
+    setTimeout(function () {
+      spans.forEach(function (sp) { if (sp.parentNode) sp.parentNode.replaceChild(document.createTextNode(sp.textContent), sp); });
+      bloc.classList.remove("cl-in");
+    }, 650);
   }
   function creuseListe(q) {
     var l = state.creuse[q.id];
@@ -1143,7 +1458,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   function consigne(q, demande) {
     var L = ["Tu aides la personne qui remplit ce quiz de décision, préparé par Claude Code pendant une session de travail. " +
       "Réponds en français, court (150 mots au plus, sauf si la demande exige plus), concret, avec des exemples tirés du contexte. " +
-      "Texte simple : paragraphes courts, au besoin une liste à tirets, ni titres, ni tableau, ni gras. N'utilise jamais le tiret cadratin. " +
+      "Texte simple : paragraphes courts, au besoin une liste à tirets, du **gras** pour un mot clé au plus par paragraphe, du `code` pour un nom technique, ni titres ni tableau. N'utilise jamais le tiret cadratin. " +
       "Tu n'as pas accès au code ni au projet : tu ne connais que ce qui suit. S'il te manque une information pour répondre, dis-le et dis ce qu'il faudrait vérifier, sans inventer."];
     L.push("", "Quiz : " + QUIZ.titre);
     if (QUIZ.intro) L.push(QUIZ.intro);
@@ -1169,20 +1484,117 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     L.push("", "Demande : " + demande);
     return L.join("\n");
   }
-  function entree(e) {
-    return h("div", { class: "cr-e" }, h("p", { class: "cr-q", text: e.q }), h("div", { class: "cr-a", text: e.r }));
+  // « 10:12 » le jour même, « 25 octobre à 10:12 » avant.
+  function heure(iso) {
+    var t = new Date(iso);
+    if (!iso || isNaN(t)) return "";
+    return t.toDateString() === new Date().toDateString() ? t.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : quand(iso);
+  }
+  // Sous une réponse finie : qui l'a écrite, quand, et Copier (le texte tel que Claude l'a écrit, gras compris).
+  function crPied(c, texte, le, a, pose) {
+    var hm = heure(le);
+    return h("div", { class: "cr-pied" + (pose ? " cl-pied" : "") },
+      h("span", { class: "cr-sig" }, h("b", { text: "Claude" }), " · sans accès au code" + (hm ? " · " + hm : "")),
+      h("button", { type: "button", class: "cr-copier", "aria-label": "Copier cette réponse", onclick: function () { crCopier(c, texte, a); } }, "Copier"));
+  }
+  // Copie en texte brut : événement copy d'abord (synchrone, marche dans une iframe), API presse-papiers ensuite ;
+  // si les deux refusent, la réponse est sélectionnée pour une copie à la main.
+  function crCopier(c, texte, a) {
+    var ok = false;
+    function onCopy(e) { e.clipboardData.setData("text/plain", texte); e.preventDefault(); ok = true; }
+    document.addEventListener("copy", onCopy);
+    try { document.execCommand("copy"); } catch (err) { ok = false; }
+    document.removeEventListener("copy", onCopy);
+    var essai = ok ? Promise.resolve(true) : navigator.clipboard && navigator.clipboard.writeText
+      ? Promise.resolve().then(function () { return navigator.clipboard.writeText(texte); }).then(function () { return true; }, function () { return false; })
+      : Promise.resolve(false);
+    essai.then(function (bien) {
+      if (bien) { dire(c, "Copié"); return; }
+      try {
+        var r = document.createRange(), s = window.getSelection();
+        r.selectNodeContents(a); s.removeAllRanges(); s.addRange(r);
+      } catch (err) {}
+      dire(c, "Copie bloquée : la réponse est sélectionnée, fais Cmd+C", true);
+    });
+  }
+  // Une entrée de l'historique, écrite d'un coup, sans animation.
+  function entree(c, e) {
+    var a = clTexte(h("div", { class: "cr-a cl" }), e.r);
+    return h("div", { class: "cr-e" }, h("p", { class: "cr-q", text: e.q }), a, crPied(c, e.r, e.le, a));
+  }
+  // L'entrée en direct : la demande, l'attente (ce que Claude fait, le trait qui bat), puis la réponse qui s'écrit.
+  // etat : attente, ecrit, fixe (finie, rangée), coupe (arrêtée ou en erreur, pas gardée). le : sa date une fois rangée.
+  var CR_N = 0;
+  function enDirect(label, attente) {
+    var L = { id: ++CR_N, etat: "attente", le: null, r: "" };
+    L.a = h("div", { class: "cr-a cl attend" });
+    L.w = plume(L.a);
+    L.att = h("p", { class: "cl-att" }, attente, L.w.caret);
+    L.a.appendChild(L.att);
+    L.pied = h("div", { class: "cr-pied", hidden: true });
+    L.el = h("div", { class: "cr-e cr-live" }, h("p", { class: "cr-q", text: label }), L.a, L.pied);
+    return L;
+  }
+  function crEcrit(L) {
+    if (L.etat !== "attente") return;
+    L.etat = "ecrit";
+    if (L.att.parentNode) L.att.parentNode.removeChild(L.att);
+    L.a.classList.remove("attend");
+  }
+  function crPiedPose(q, L, pied) {
+    var c = q.cr;
+    L.el.replaceChild(pied, L.pied);
+    L.pied = pied;
+    if (!RM.matches) {
+      clearTimeout(c.calmeT);
+      c.panel.classList.add("calme");
+      c.calmeT = setTimeout(function () { c.panel.classList.remove("calme"); }, 450);
+    }
+    creusePaint(q);
+  }
+  // Tout est écrit : la réponse se fixe (le trait part, le liseré se calme, la signature et Copier se posent).
+  function crFixer(q, L) {
+    var c = q.cr;
+    if (c.liveE !== L) return;
+    L.etat = "fixe";
+    if (L.w.caret.parentNode) L.w.caret.parentNode.removeChild(L.w.caret);
+    crPiedPose(q, L, crPied(c, L.r, L.le, L.a, !RM.matches));
+    crApaiser(q, L);
+  }
+  // Les dernières animations finies, le texte redevient du texte simple, au même rendu (un panneau refermé puis
+  // rouvert ne rejoue rien).
+  function crApaiser(q, L) {
+    setTimeout(function () {
+      if (q.cr.liveE !== L) return;
+      L.w.vu = []; L.a.textContent = "";
+      clPeindre(L.w, clDecoupe(L.w.montre), {});
+      L.pied.classList.remove("cl-pied");
+    }, RM.matches ? 0 : 320);
+  }
+  // Arrêtée ou en erreur : le texte reçu se fige, tel quel, marqué comme interrompu (rien de « fini »). Sans texte,
+  // l'entrée part.
+  function crCouper(q, L, part) {
+    var c = q.cr;
+    if (c.liveE !== L) return;
+    plumeArret(L.w);
+    if (!part) { if (L.el.parentNode) L.el.parentNode.removeChild(L.el); c.liveE = null; return; }
+    crEcrit(L);
+    L.etat = "coupe";
+    L.w.recu = part;
+    if (L.w.montre !== part) plumeMontrer(L.w, part, performance.now());
+    if (L.w.caret.parentNode) L.w.caret.parentNode.removeChild(L.w.caret);
+    crPiedPose(q, L, h("div", { class: "cr-pied" + (RM.matches ? "" : " cl-pied") },
+      h("span", { class: "cr-sig" }, h("b", { text: "Claude" }), " · réponse interrompue, pas gardée")));
+    crApaiser(q, L);
   }
   function creuseUI(q) {
-    var c = q.cr = { busy: false, ctl: null, cle: null };
+    var c = q.cr = { busy: false, ctl: null, cle: null, liveE: null, ouverts: {} };
     var pid = "cr-" + q.id;
     c.btnL = h("span", { text: "Creuse" });
     c.btn = h("button", { type: "button", class: "cr-btn", "aria-expanded": "false", "aria-controls": pid, hidden: true, onclick: function () { creuseOuvrir(q); } },
       c.btnL, h("kbd", { "aria-hidden": "true", text: "q" }));
     c.lead = h("p", { class: "cr-lead" });
     c.hist = h("div", { class: "cr-hist" });
-    c.liveQ = h("p", { class: "cr-q" });
-    c.liveA = h("div", { class: "cr-a" });
-    c.live = h("div", { class: "cr-e cr-live", hidden: true }, c.liveQ, c.liveA);
     c.asks = (q.type === "texte" ? DEMANDES.texte : DEMANDES.options).map(function (d) {
       return h("button", { type: "button", class: "cr-ask", onclick: function (e) { creuser(q, d.l, d.p, e.currentTarget); } }, d.l);
     });
@@ -1197,7 +1609,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       h("div", { class: "cr-asks", role: "group", "aria-label": "Demandes rapides" }, c.asks[0], c.asks[1], c.asks[2]),
       h("label", { class: "field-l", for: pid + "-t" }, "Autre chose ?", h("small", { text: "ta propre question" })), c.ta);
     c.panel = h("section", { class: "cr", id: pid, tabindex: "-1", "aria-label": "Creuser " + q.id + " avec Claude", hidden: true },
-      h("h4", { text: "Creuser avec Claude" }), c.lead, c.hist, c.live, c.zone, h("div", { class: "msg-actions" }, c.go, c.stop, c.etat));
+      h("h4", { text: "Creuser avec Claude" }), c.lead, c.hist, c.zone, h("div", { class: "msg-actions" }, c.go, c.stop, c.etat));
     c.ta.addEventListener("input", function () { fit(c.ta); });
     c.ta.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); c.go.click(); }
@@ -1205,22 +1617,43 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     q.art.appendChild(h("div", null, c.btn));
     q.art.appendChild(c.panel);
   }
-  // Mise à jour sur place ; l'historique n'est reconstruit que s'il a changé.
+  // Mise à jour sur place ; l'historique n'est reconstruit que s'il a changé. Les échanges plus anciens se replient,
+  // sauf ceux déjà montrés dépliés depuis l'ouverture de la page (rien ne se replie sous les yeux). L'entrée en direct
+  // n'est jamais retirée du document tant qu'elle est la dernière (en cours, interrompue, ou finie et rangée) : ses
+  // animations continuent. Rangée puis remplacée en base (autre appareil), elle cède la place à l'historique.
+  function crCle(e) { return typeof e.le === "string" && e.le ? e.le : e.q + "|" + e.r; }
   function creusePaint(q) {
     var c = q.cr;
     if (!c) return;
-    var list = creuseListe(q), cle = JSON.stringify(list), n = list.length;
+    var list = creuseListe(q), n = list.length, L = c.liveE;
+    if (L && L.le && !(n && list[n - 1].le === L.le)) {
+      plumeArret(L.w);
+      if (L.el.parentNode) L.el.parentNode.removeChild(L.el);
+      L = c.liveE = null;
+    }
+    if (n) c.ouverts[crCle(list[n - 1])] = true;
+    var anciens = [], ouverts = [];
+    list.forEach(function (e, i) {
+      if (L && L.le && i === n - 1) return;
+      (c.ouverts[crCle(list[i])] ? ouverts : anciens).push(e);
+    });
+    var cle = JSON.stringify([anciens, ouverts]) + (L ? "|" + L.id : "");
     if (cle !== c.cle) {
       c.cle = cle;
-      c.hist.textContent = "";
-      if (n > 1) {
-        var old = h("details", { class: "cr-old" }, h("summary", { text: (n - 1) + (n > 2 ? " échanges avant" : " échange avant") }));
-        list.slice(0, -1).forEach(function (e) { old.appendChild(entree(e)); });
-        c.hist.appendChild(old);
+      var plie = !!c.hist.querySelector(".cr-old[open]");
+      Array.prototype.slice.call(c.hist.childNodes).forEach(function (x) { if (!L || x !== L.el) c.hist.removeChild(x); });
+      var f = document.createDocumentFragment();
+      if (anciens.length) {
+        var old = h("details", { class: "cr-old", open: plie }, h("summary", { text: anciens.length + (anciens.length > 1 ? " échanges avant" : " échange avant") }));
+        anciens.forEach(function (e) { old.appendChild(entree(c, e)); });
+        f.appendChild(old);
       }
-      if (n) c.hist.appendChild(entree(list[n - 1]));
+      ouverts.forEach(function (e) { f.appendChild(entree(c, e)); });
+      if (L && L.el.parentNode !== c.hist) c.hist.appendChild(L.el);
+      c.hist.insertBefore(f, L ? L.el : null);
     }
-    c.hist.hidden = !n;
+    c.hist.hidden = !n && !L;
+    c.panel.classList.toggle("fixe", L ? L.etat === "fixe" || L.etat === "coupe" : n > 0);
     // Coupée en cours de route : le panneau ouvert garde son bouton (et son message) jusqu'à ce qu'on le ferme.
     c.btn.hidden = !sampleOk && !n && c.panel.hidden;
     c.btnL.textContent = n ? "Creuse (" + n + ")" : "Creuse";
@@ -1256,11 +1689,10 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     var c = q.cr;
     if (!sample || !sampleOk || c.busy) return;
     var ctl = c.ctl = new AbortController(), recu = false;
+    // La réponse d'avant cède sa place : finie, elle revient dans l'historique (même rendu) ; interrompue, elle part.
+    if (c.liveE) plumeArret(c.liveE.w);
+    var L = c.liveE = enDirect(label, depuis === c.ta ? "Claude lit ta question" : q.type === "texte" ? "Claude lit la question" : "Claude lit la question et ses options");
     c.busy = true;
-    c.liveQ.textContent = label;
-    c.liveA.textContent = "Je réfléchis…";
-    c.liveA.classList.add("attente");
-    c.live.hidden = false;
     // La ligne d'état (role=status) annonce l'attente puis l'arrivée ; la réponse elle-même n'est pas live.
     dire(c, "Claude réfléchit…");
     creusePaint(q);
@@ -1277,30 +1709,41 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     // Promise.resolve : un appel qui lèverait quand même finit en rejet comme les autres.
     Promise.resolve().then(function () {
       return sample(consigne(q, demande), { signal: ctl.signal, onText: function (u) {
+        if (c.liveE !== L || L.etat === "coupe" || !u || typeof u.text !== "string") return;
         recu = true;
-        c.liveA.classList.remove("attente");
-        c.liveA.textContent = propre(u.text);
+        crEcrit(L);
+        L.w.recu = coupe(propre(u.text), CREUSE_R);
+        plumeEcrire(L.w);
       } });
     }).then(function (res) {
-      var r = propre(res.text).trim(), list = creuseListe(q).slice();
-      list.push({ q: label, r: coupe(r, CREUSE_R), le: new Date().toISOString() });
+      var t = propre(res.text), list = creuseListe(q).slice();
+      var e = { q: label, r: coupe(t.trim(), CREUSE_R), le: new Date().toISOString() };
+      list.push(e);
+      // Rangée tout de suite ; l'affichage finit d'écrire ce qui reste, puis la réponse se fixe.
+      if (c.liveE === L) { L.le = e.le; L.r = e.r; }
       state.creuse[q.id] = list.slice(-CREUSE_MAX);
       if (elaguer()) QS.forEach(creusePaint);
       creuseTouched = true;
       save();
-      c.live.hidden = true;
       if (c.ta.value.trim() === demande) { c.ta.value = ""; fit(c.ta); }
-      dire(c, res.truncated ? "Réponse coupée : demande moins à la fois." : "Réponse reçue, juste au-dessus.", false);
+      // « Réponse reçue » quand elle a fini de s'écrire, pas avant.
+      var msg = res.truncated ? "Réponse coupée : demande moins à la fois." : "Réponse reçue, juste au-dessus.";
+      if (c.liveE === L) {
+        crEcrit(L);
+        L.w.recu = e.r; L.w.fin = true;
+        L.w.surFin = function () { crFixer(q, L); if (c.liveE === L || !c.busy) dire(c, msg, false); };
+        plumeEcrire(L.w);
+      } else dire(c, msg, false);
     }, function (e) {
       var code = (e && e.code) || "upstream_error";
-      var part = e && typeof e.text === "string" && e.text.trim() ? propre(e.text) : "";
-      if (part) { c.liveA.classList.remove("attente"); c.liveA.textContent = part; } else c.live.hidden = true;
+      var part = code === "refused" ? "" : e && typeof e.text === "string" && e.text.trim() ? propre(e.text) : recu ? L.w.recu : "";
+      crCouper(q, L, part.trim() ? part : "");
       if (COUPE[code]) {
         sampleOk = false;
         QS.forEach(creusePaint);
         dire(c, "Claude n'est pas disponible pour cette page : Creuse est coupé ici.", true);
       } else if (code === "cancelled") dire(c, part ? "Arrêté. Ce début de réponse n'est pas gardé." : "Arrêté.");
-      else if (code === "refused") { c.live.hidden = true; dire(c, "Claude n'a pas voulu répondre à cette demande : reformule-la.", true); }
+      else if (code === "refused") dire(c, "Claude n'a pas voulu répondre à cette demande : reformule-la.", true);
       else dire(c, ERR_SAMPLE[code] || (recu ? "Réponse interrompue, pas gardée : réessaie dans un moment." : "Ça n'a pas abouti : réessaie dans un moment."), true);
     }).then(fin, fin);
   }
@@ -1345,7 +1788,17 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   var expressBox = top.appendChild(h("div", null, expressBtn));
   top.appendChild(h("p", { class: "keys-hint" }, "Au clavier : appuie sur ", h("kbd", { text: "?" }), " pour voir les raccourcis."));
 
-  var qWrap = $("questions"), railList = $("rail-list"), segs = $("segs"), pills = $("pills");
+  var qWrap = $("questions"), railList = $("rail-list"), pills = $("pills");
+  var lum = railList.appendChild(h("span", { class: "rail-lum", "aria-hidden": "true" }));
+  // La coche d'une question répondue, tracée au trait (stroke-dashoffset).
+  function coche() {
+    var NS = "http://www.w3.org/2000/svg", s = document.createElementNS(NS, "svg"), p = document.createElementNS(NS, "path");
+    s.setAttribute("class", "ri-chk"); s.setAttribute("viewBox", "0 0 16 14");
+    s.setAttribute("aria-hidden", "true"); s.setAttribute("focusable", "false");
+    p.setAttribute("d", "M2 7.5 6 11.5 14 2.5");
+    s.appendChild(p);
+    return s;
+  }
   var groupEl = null, groupName = null, railGroup = null;
   QS.forEach(function (q, i) {
     if (!groupEl || q.groupe !== groupName) {
@@ -1404,14 +1857,13 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     q.art.addEventListener("pointerdown", function () { setCur(i); });
     groupEl.appendChild(q.art);
 
-    q.tag = h("span", { class: "tag", text: TAG.vide });
-    q.sqMark = h("span", { class: "sq-mark", hidden: true });
+    // Rail : l'identifiant (ou la coche une fois répondue), le titre en entier, un seul signal d'attention (railPaint).
+    q.riEtat = h("span", { class: "vh" });
+    q.riAtt = h("span", { class: "ri-att", hidden: true });
     q.ri = h("button", { type: "button", class: "ri", "data-state": "vide", onclick: function () { go(i); } },
-      h("span", { class: "ri-num", text: q.id }), h("span", { class: "ri-title", title: q.titre, text: q.titre }),
-      h("span", { class: "ri-meta" }, q.tag, q.sqMark, q.bloquant ? h("span", { class: "ri-bloq", text: "Bloquant" }) : null));
+      h("span", { class: "ri-mark" }, h("span", { class: "ri-num", text: q.id }), coche()),
+      h("span", { class: "ri-body" }, h("span", { class: "ri-title", text: q.titre }), q.riEtat, q.riAtt));
     railList.appendChild(q.ri);
-    q.seg = h("span", { class: "seg" });
-    segs.appendChild(q.seg);
     q.pill = h("button", { type: "button", class: "pill", "data-state": "vide", onclick: function () { go(i); } }, String(i + 1));
     pills.appendChild(q.pill);
   });
@@ -1465,11 +1917,9 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
         q.slot.appendChild(st);
       }
     }
-    var tag = q.type === "multi" && s === "fait" ? txt : TAG[s];
-    q.ri.setAttribute("data-state", s); q.tag.textContent = tag;
-    q.seg.style.background = INK[s];
+    // Le rail et les pastilles (rangée, coche, attention, libellé) suivent dans railPaint, appelé par recap.
+    q.ri.setAttribute("data-state", s);
     q.pill.setAttribute("data-state", s);
-    q.pill.setAttribute("aria-label", q.id + " : " + tag.toLowerCase());
     avisPaint(q);
   }
   function fill(q) {
@@ -1504,15 +1954,126 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     var b = Date.parse(bilan.le), f = Date.parse(state.finiLe);
     return !state.termine || isNaN(b) || isNaN(f) || b >= f;
   }
+  /* ---------- Rail : ce qui reste ---------- */
+  // Une question répondue se range (titre discret, coche), le décompte suit, la lumière couvre la question en cours.
+  // Seul un geste local anime (geste, posé juste avant le recap qui suit) : chiffres qui roulent, coche tracée, titre
+  // qui pâlit. Le chargement, les avis des autres et les autres onglets posent sans bouger.
+  var geste = false;
+  function rouler(el, haut) { el.classList.remove("roule", "roule-haut"); void el.offsetWidth; el.classList.add(haut ? "roule-haut" : "roule"); }
+  // Le décompte sur deux chiffres au moins ; seul un chiffre qui change roule, et seulement s'il est à l'écran : par
+  // le bas quand le compte descend, par le haut quand il remonte. Tout tranché : une coche à la place des chiffres.
+  function chiffres(box, n, anime, tout) {
+    var vu = anime && box.offsetParent !== null, prev = box.getAttribute("data-n"), haut = prev !== null && n > +prev, i;
+    box.setAttribute("data-n", n);
+    if (tout) {
+      if (!box.classList.contains("fini")) {
+        box.textContent = "";
+        var chk = coche(); chk.setAttribute("class", "reste-chk");
+        box.appendChild(chk);
+        box.classList.add("fini");
+        box.classList.remove("trace");
+        if (vu) { void box.offsetWidth; box.classList.add("trace"); }
+      }
+      return;
+    }
+    if (box.classList.contains("fini")) { box.classList.remove("fini", "trace"); box.textContent = ""; }
+    var s = n < 10 ? "0" + n : String(n);
+    if (box.childNodes.length !== s.length) {
+      box.textContent = "";
+      for (i = 0; i < s.length; i++) box.appendChild(h("span", { class: "dg" }));
+    }
+    for (i = 0; i < s.length; i++) {
+      var d = box.childNodes[i], avant = d.textContent;
+      if (avant === s.charAt(i)) continue;
+      d.textContent = s.charAt(i);
+      if (vu && avant) rouler(d, haut);
+    }
+  }
+  ["reste-n", "mini-n"].forEach(function (id) {
+    $(id).addEventListener("animationend", function (e) { e.target.classList.remove("roule", "roule-haut"); });
+  });
+  // Sur un geste : le titre change de couleur en 220 ms, la coche se trace (en rangeant) ; les classes repartent ensuite.
+  function marquer(q, ok) {
+    var el = q.ri;
+    el.classList.remove("trace");
+    el.classList.add("geste");
+    if (ok) { void el.offsetWidth; el.classList.add("trace"); }
+    clearTimeout(q.riT);
+    q.riT = setTimeout(function () { el.classList.remove("geste", "trace"); }, 400);
+  }
+  function railPaint() {
+    var anime = geste && !RM.matches;
+    geste = false;
+    var lit = lectureSeule(), relit = MOI.invite && !lit;
+    var vus = QS.filter(function (q) { return q.vu; }), N = vus.length, reste = vus.filter(estVide).length;
+    // En lecture seule, rien n'est à trancher : la tête dit combien il y a de questions.
+    var n = lit ? N : reste;
+    var tout = !lit && N > 0 && !reste;
+    var t = lit ? (N > 1 ? "questions" : "question")
+      : tout ? (relit ? "tu as répondu partout" : "tout est tranché")
+      : relit ? "sans ton avis" : "à trancher";
+    var sous = lit ? "en lecture seule"
+      : !N ? "aucune question affichée"
+      : tout ? (N > 1 ? "les " + N + " questions" : "la question")
+      : relit ? "sur " + N + ", vide vaut accord"
+      : "sur " + N + (N > 1 ? " questions" : " question");
+    chiffres($("reste-n"), n, anime, tout);
+    chiffres($("mini-n"), n, anime, tout);
+    $("reste-sr").textContent = tout ? "" : n + " ";
+    $("reste-t").textContent = t; $("mini-t").textContent = t;
+    $("reste-s").textContent = sous;
+    $("mini-sr").textContent = (tout ? "" : n + " ") + t + ", " + sous;
+    // Attention : une bloquante encore vide ; chez le propriétaire à plusieurs, une divergence ouverte ou rouverte et ce
+    // qui est à discuter ; chez un participant, seulement ce que le propriétaire a mis à discuter.
+    var sqP = !MOI.invite && squadDispo(), sqI = relit && squadDispo();
+    QS.forEach(function (q) {
+      var ok = !estVide(q), e = sqP || sqI ? etatQ(q).etat : null;
+      var att = q.bloquant && !ok && !MOI.invite ? "bloquante"
+        : sqP && (e === "divergence" || e === "rouverte") ? "divergence"
+        : (sqP || sqI) && e === "discuter" ? "à discuter" : "";
+      if (q.riOk != null && q.riOk !== ok && anime) marquer(q, ok);
+      q.riOk = ok;
+      q.ri.classList.toggle("ok", ok);
+      if (q.riAtt.textContent !== att) q.riAtt.textContent = att;
+      q.riAtt.hidden = !att;
+      var etat = lit ? "" : ok ? "répondue" : relit ? "sans ton avis" : "à trancher";
+      q.riEtat.textContent = etat ? ", " + etat : "";
+      if (att) q.pill.setAttribute("data-att", ""); else q.pill.removeAttribute("data-att");
+      q.pill.setAttribute("aria-label", q.id + (etat ? " : " + etat : "") + (att ? ", " + att : ""));
+    });
+    lumiere();
+  }
+
+  // La lumière couvre la ligne en cours : translateY jusqu'à elle, scaleY à sa hauteur (base fixe de 100 px). Elle vit
+  // dans la liste qui défile, et ne glisse que quand la question en cours change après le chargement ; sinon
+  // (premier placement, redimensionnement, polices, ligne qui change de hauteur, questions masquées) elle se pose.
+  var LUM_BASE = 100, LUM_MARGE = 5, lumIdx = -1, lumTr = "", lumLibre = false, lumJusqua = 0;
+  function lumiere(mode) {
+    var q = QS[cur], ri = q && q.vu ? q.ri : null;
+    if (!ri || ri.offsetParent !== railList) { lum.style.opacity = "0"; lumIdx = -1; lumTr = ""; return; }
+    var y = ri.offsetTop + LUM_MARGE, hh = Math.max(4, ri.offsetHeight - 2 * LUM_MARGE);
+    var tr = "translateY(" + y + "px) scaleY(" + (hh / LUM_BASE).toFixed(4) + ")";
+    var now = performance.now(), change = lumIdx !== cur;
+    if (mode === "pose") lumJusqua = 0;
+    else if (mode === "glisse" && change && lumIdx >= 0 && lumLibre && !RM.matches) lumJusqua = now + 300;
+    if (tr === lumTr && !change) return;
+    // Pendant une glissade, une mesure qui bouge (le titre passe en 500 et change de hauteur) reprend la cible sans couper.
+    var anime = now < lumJusqua;
+    if (!anime) lum.style.transition = "none";
+    lum.style.transform = tr; lum.style.opacity = "1";
+    if (!anime) { void lum.offsetWidth; lum.style.transition = ""; }
+    lumIdx = cur; lumTr = tr;
+  }
+  window.addEventListener("resize", function () { lumiere("pose"); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { lumiere("pose"); });
+  var railRO = window.ResizeObserver ? new ResizeObserver(function () { lumiere(); }) : null;
+  if (railRO) { railRO.observe(railList); QS.forEach(function (q) { railRO.observe(q.ri); }); }
+
   function recap() {
     majVue();
-    var vus = QS.filter(function (q) { return q.vu; });
-    var nv = vus.filter(function (q) { return !estVide(q); }).length;
-    var html = nv + '<span class="of">/' + vus.length + "</span>";
-    $("count-n").innerHTML = html;
-    $("mini-count").innerHTML = html;
     QS.forEach(avisPaint);
     sqPaint();
+    railPaint();
     var f = bilanFin(), N = f.act.length, n = N - f.vides;
     // En mode express, le compteur du haut ne voit que les bloquantes : la ligne dit combien sont masquées.
     var ex = expressOn(), cachees = ex ? f.act.filter(function (q) { return !essentielle(q); }).length : 0;
@@ -1664,7 +2225,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       change.forEach(function (x) {
         var q = x.q, apparait = x.vu && !q.vu;
         q.vu = x.vu;
-        q.art.hidden = q.ri.hidden = q.pill.hidden = q.seg.hidden = !x.vu;
+        q.art.hidden = q.ri.hidden = q.pill.hidden = !x.vu;
         if (apparait && vueInit && !RM.matches) { q.art.classList.remove("q-in"); void q.art.offsetWidth; q.art.classList.add("q-in"); }
       });
       var n = 0;
@@ -1693,7 +2254,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     var r = expressBtn.getBoundingClientRect();
     var a = expressBtn.offsetParent !== null && r.bottom > 0 && r.top < window.innerHeight ? expressBtn : null;
     majVue(a);
-    recap();
+    geste = true; recap();
   }
 
   /* ---------- Gestes ---------- */
@@ -1723,10 +2284,10 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   }
   function edited(q) {
     touched = true;
-    if (q) dernier = q;
+    if (q) { dernier = q; majRevenu(q); }
     if (state.termine) { state.termine = false; state.finiLe = null; }
     if (q && q.type === "texte") paint(q, true);
-    recap(); save();
+    geste = true; recap(); save();
   }
   var autre = $("autre");
   autre.addEventListener("input", function () { fit(autre); state.autre = autre.value; edited(null); });
@@ -1752,8 +2313,10 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   }
   // Chez le propriétaire, dès qu'un avis existe, « Appliquer » ouvre d'abord le panneau (ce qui part, ce qui attend) ;
   // sinon le bouton envoie directement, comme toujours.
+  // Chez un participant, « Envoyer mes réponses » passe d'abord par « Ce que ça implique » (impSoumettre), qui n'ouvre
+  // un récap que s'il y a quelque chose à dire.
   $("finish").addEventListener("click", function () {
-    if (squadProprio() && !state.termine) openAp(); else envoyer("");
+    if (squadProprio() && !state.termine) openAp(); else if (impPossible()) impSoumettre(); else envoyer("");
   });
   // resume : ce que le panneau « Appliquer » ajoute à la fin de la relance (divergences réglées, à discuter, en attente).
   function envoyer(resume) {
@@ -2364,7 +2927,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   function lireAvis(uid, t) {
     return { uid: uid, reponses: obj(t.reponses), notes: obj(t.notes), tenir: obj(t.tenir),
       autre: typeof t.autre === "string" ? t.autre.trim() : "", termine: t.termine === true, finiLe: typeof t.finiLe === "string" ? t.finiLe : "",
-      masquees: Array.isArray(t.masquees) ? t.masquees : [] };
+      masquees: Array.isArray(t.masquees) ? t.masquees : [], implique: impliquesLus(t.implique), revenu: revenusLus(t.revenu) };
   }
   function avisValide(doc) {
     var d = doc.exists ? doc.data() : null;
@@ -2439,7 +3002,8 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   }
   // Chez un participant, son propre avis vient de la page (à jour pendant la frappe), les autres de avis/.
   function monAvis() {
-    return { uid: MOI.id, moi: true, reponses: state.reponses, notes: state.notes, tenir: state.tenir, autre: "", termine: state.termine, masquees: idsMasques() };
+    return { uid: MOI.id, moi: true, reponses: state.reponses, notes: state.notes, tenir: state.tenir, autre: "", termine: state.termine, masquees: idsMasques(),
+      implique: impliquesLus(state.implique), revenu: revenusLus(state.revenu) };
   }
   function lesAvis() {
     if (!MOI.invite) return avis;
@@ -2481,13 +3045,19 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   //   "divergence" un avis diffère de la réponse retenue, ou Claude a relevé une nuance qui la contredit ;
   //   "reglee", "discuter"  un arbitrage tient toujours ;
   //   "rouverte"   un arbitrage existe, mais une réponse en jeu a changé depuis et ça diverge.
+  // Un participant revenu à la réponse retenue après « Ce que ça implique » (revenu) règle la question : un accord
+  // devient « reglee », avec sa trace. S'il en repart, c'est une divergence comme une autre.
   // Rend aussi m (réponse retenue), avis [{ a, v, diff, contre, fort }] (répondus ou contredits), divergents,
-  // arb, change [{ base } | { a, nouveau }] et empreinte (la forme rangée avec un arbitrage).
+  // arb, change [{ base } | { a, nouveau }], revenu [avis] et empreinte (la forme rangée avec un arbitrage).
   function etatQ(q) {
     var b = base(), l = lesAvis();
-    var r = { q: q, etat: null, m: null, avis: [], divergents: [], arb: null, change: [], empreinte: null };
+    var r = { q: q, etat: null, m: null, avis: [], divergents: [], arb: null, change: [], empreinte: null, revenu: [] };
     if (!b || !l.length || b.masquees.indexOf(q.id) >= 0) return r;
     r.m = retenue(q, b);
+    if (r.m != null) l.forEach(function (a) {
+      var v = avisValeur(q, a);
+      if (revenuDe(a, q) && (v == null || hv(v) === hv(r.m))) r.revenu.push(a);
+    });
     var contre = {};
     (b.nuancesLues ? b.nuancesLues.contradictions : []).forEach(function (c) { if (c.qid === q.id && !contre[c.uid]) contre[c.uid] = c.raison || "contredit la réponse retenue"; });
     l.forEach(function (a) {
@@ -2507,9 +3077,11 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
         if (x.v != null && ea[x.a.uid] !== r.empreinte.avis[x.a.uid]) r.change.push({ a: x.a, nouveau: ea[x.a.uid] == null });
       });
       r.etat = !r.change.length ? (arb.sortie === "discuter" ? "discuter" : "reglee") : r.divergents.length ? "rouverte" : "accord";
+      if (r.etat === "accord" && r.revenu.length) r.etat = "reglee";
       return r;
     }
     r.etat = r.divergents.length ? "divergence" : r.m == null ? "attente" : "accord";
+    if (r.etat === "accord" && r.revenu.length) r.etat = "reglee";
     return r;
   }
   var OUVERTE = { divergence: 1, rouverte: 1, discuter: 1 };
@@ -2568,9 +3140,20 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   // Ce qui est retenu après un arbitrage, dit pareil chez le propriétaire et chez un participant.
   function retenuTexte(q, e) {
     var arb = e.arb;
-    if (arb.sortie === "synthese") return "Retenu, la synthèse de Claude" + (typeof arb.texte === "string" && arb.texte.trim() ? " : " + coupe(arb.texte.trim(), 300) : "");
+    // La synthèse retenue est du texte de Claude : rendue (gras, code), dans un élément.
+    if (arb.sortie === "synthese") {
+      var tx = typeof arb.texte === "string" ? arb.texte.trim() : "";
+      return tx ? h("span", null, "Retenu, la synthèse de Claude : ", h("span", { class: "cl-i" }, clInline(coupe(tx, 300)))) : "Retenu, la synthèse de Claude";
+    }
     if (arb.sortie === "avis") return "Retenu : " + (e.m != null ? court(q, e.m) + ", " : "") + laReponseDe(arb.uid);
     return "Retenu : " + (MOI.invite ? "la réponse " + de(nomDe(base())) : "ta réponse");
+  }
+  // Réglée : par un arbitrage, ou parce qu'un participant est revenu à la réponse retenue après « Ce que ça implique ».
+  function regleeTexte(q, e) { return e.revenu.length && (!e.arb || e.change.length) ? revenuTexte(e) : retenuTexte(q, e); }
+  function revenuTexte(e) {
+    var noms = e.revenu.map(function (a) { return a.moi ? "toi" : nomDe(a); });
+    if (noms.length === 1 && noms[0] === "toi") return "Tu as changé d'avis après « ce que ça implique »";
+    return maj(liste(noms)) + (noms.length > 1 ? " ont" : " a") + " changé d'avis après « ce que ça implique »";
   }
   // Qui a bougé depuis l'arbitrage : une réponse changée, ou une première réponse (nouveau).
   function changeTexte(e) {
@@ -2598,8 +3181,8 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     // Chez le propriétaire, l'état et ses actions sont sur la ligne d'arbitrage (arbPaint).
     if (ETAT_MARQUE[e.etat] && !arbVu(e)) {
       var et = h("span", { class: "avis-l avis-etat" }, h("span", { class: "sq-mark", "data-etat": e.etat, text: ETAT_MARQUE[e.etat] }));
-      var t = e.etat === "rouverte" ? changeTexte(e) : e.etat === "reglee" ? retenuTexte(q, e) : "";
-      if (t) et.appendChild(document.createTextNode(t));
+      var t = e.etat === "rouverte" ? changeTexte(e) : e.etat === "reglee" ? regleeTexte(q, e) : "";
+      if (t) et.appendChild(typeof t === "string" ? document.createTextNode(t) : t);
       // La raison suit ce qui est retenu : coupés ensemble sous 600 px, dépliés ensemble.
       var raison = MOI.invite && e.arb && e.etat !== "rouverte" && typeof e.arb.raison === "string" ? e.arb.raison.trim() : "";
       if (raison) et.appendChild(h("span", { class: "avis-pq", text: (t ? " " : "") + "Pourquoi : " + coupe(raison, 300) }));
@@ -2638,7 +3221,15 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     });
     if (!cartes) e.avis.forEach(function (x) {
       if (x.contre) box.appendChild(h("span", { class: "avis-l avis-c" }, h("span", { class: "avis-h", text: "Claude" }),
-        (x.a.moi ? (q.type !== "texte" && noteDe(x.a, q) ? "Ta nuance" : "Toi") : maj(nomDe(x.a))) + " : " + raisonLisible(x.contre)));
+        (x.a.moi ? (q.type !== "texte" && noteDe(x.a, q) ? "Ta nuance" : "Toi") : maj(nomDe(x.a))) + " : ",
+        h("span", { class: "cl-i" }, clInline(raisonLisible(x.contre)))));
+    });
+    // Chez le propriétaire, sur une divergence (ouverte, réglée, à discuter) : ce que « Ce que ça implique » a dit à chacun,
+    // ici quand sa carte côte à côte n'est pas affichée (sinon la ligne est dans sa carte).
+    if (arbVu(e)) avis.forEach(function (a) {
+      if (cartes && e.etat !== "discuter" && e.divergents.some(function (x) { return x.a === a; })) return;
+      var il = impLigne(a, q, "avis-l");
+      if (il) box.appendChild(plier(il, q.id + "|imp|" + a.uid));
     });
     var cle = box.innerHTML;
     if (cle !== q.avisCle) {
@@ -2647,15 +3238,11 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
         q.avisInfo.textContent = "";
         while (box.firstChild) q.avisInfo.appendChild(box.firstChild);
       }, q.art);
+      if (nuArrivee) nuCascade(q.avisInfo);
     }
     q.avisEl.hidden = !q.avisInfo.childNodes.length && q.ab.el.hidden && q.ab.bar.hidden;
     if (!q.avisEl.hidden) coupesSuivre(q.avisEl);
-    // Rail et pastilles : l'état à plusieurs, à la place de l'étiquette de reco.
-    var sqE = squadDispo() && ETAT_MARQUE[e.etat] ? e.etat : null;
-    q.sqMark.hidden = !sqE; q.tag.hidden = !!sqE;
-    if (sqE) { q.sqMark.setAttribute("data-etat", sqE); q.sqMark.textContent = ETAT_MARQUE[sqE]; q.pill.setAttribute("data-sq", sqE); }
-    else q.pill.removeAttribute("data-sq");
-    q.pill.setAttribute("aria-label", q.id + " : " + q.tag.textContent.toLowerCase() + (sqE ? ", " + ETAT_MARQUE[sqE].toLowerCase() : ""));
+    // Le rail et les pastilles ne gardent de l'état à plusieurs que le signal d'attention (railPaint).
   }
   // Chez un participant : une étiquette au nom du propriétaire sur l'option (ou les options) qu'il a choisie.
   function marquerOptions(q, m, nom) {
@@ -2822,8 +3409,9 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     });
     c.gens.forEach(function (x) {
       if (x.contre) col.appendChild(h("span", { class: "arb-n avis-c" }, h("span", { class: "avis-h", text: "Claude" }),
-        (seul ? "" : maj(nomDe(x.a)) + " : ") + raisonLisible(x.contre)));
+        seul ? "" : maj(nomDe(x.a)) + " : ", h("span", { class: "cl-i" }, clInline(raisonLisible(x.contre)))));
     });
+    c.gens.forEach(function (x) { var il = x.a.moi ? null : impLigne(x.a, q, "arb-n"); if (il) col.appendChild(plier(il, q.id + "|imp|" + x.a.uid)); });
     return col;
   }
   function noteDe(a, q) { return typeof a.notes[q.id] === "string" ? a.notes[q.id].trim() : ""; }
@@ -2904,8 +3492,8 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     var ouverte = e.etat !== "reglee", arb = state.arbitrages[q.id] || null, b = base();
     // Ligne d'état.
     var et = h("span", null, h("span", { class: "sq-mark", "data-etat": e.etat, text: ETAT_MARQUE[e.etat] }));
-    var t = e.etat === "rouverte" ? changeTexte(e) : e.etat === "reglee" ? retenuTexte(q, e) : "";
-    if (t) { et.appendChild(document.createTextNode(t)); et.appendChild(boutonLire(q.id + "|etat")); }
+    var t = e.etat === "rouverte" ? changeTexte(e) : e.etat === "reglee" ? regleeTexte(q, e) : "";
+    if (t) { et.appendChild(typeof t === "string" ? document.createTextNode(t) : t); et.appendChild(boutonLire(q.id + "|etat")); }
     if (et.innerHTML !== ab.etatCle) {
       ab.etatCle = et.innerHTML;
       ab.etatL.textContent = "";
@@ -2931,6 +3519,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       ab.colsCle = cc;
       ab.cols.textContent = "";
       while (cols.firstChild) ab.cols.appendChild(cols.firstChild);
+      if (nuArrivee) nuCascade(ab.cols);
     }
     ab.cols.hidden = !cc;
     // Sorties, repliées derrière « Trancher » ; dépliées, elles le restent jusqu'à un choix.
@@ -2953,11 +3542,14 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     ab.el.classList.toggle("deplie", deplie);
     ab.trancher.setAttribute("aria-expanded", deplie ? "true" : "false");
     // Synthèse proposée par Claude : visible même sorties repliées (elle a été demandée, « Retenir la synthèse » y est).
-    var s = ouverte && !q.cadrage ? synthDe(q) : null, syn = h("div");
-    if (s) {
-      syn.appendChild(h("p", null, h("span", { class: "avis-h", text: "Claude" }),
-        s.terrain ? "Synthèse : " + s.texte + (s.cle != null && q.type !== "texte" ? " Plus proche : " + court(q, s.cle) + "." : "")
-          : "Pas de terrain commun : " + s.texte));
+    // Pendant la demande, la carte dit ce que Claude fait (le trait bat) ; la synthèse arrivée prend sa place.
+    var s = ouverte && !q.cadrage ? synthDe(q) : null, synAtt = ouverte && !q.cadrage && ab.busy, syn = h("div");
+    if (synAtt) syn.appendChild(h("p", { class: "cl-att attend" }, h("span", { class: "avis-h", text: "Claude" }), "cherche un terrain d'entente",
+      h("span", { class: "cl-caret", "aria-hidden": "true" })));
+    else if (s) {
+      syn.appendChild(h("p", null, h("span", { class: "avis-h", text: "Claude" }), s.terrain ? "Synthèse : " : "Pas de terrain commun : ",
+        h("span", { class: "cl-i" }, clInline(s.texte)),
+        s.terrain && s.cle != null && q.type !== "texte" ? " Plus proche : " + court(q, s.cle) + "." : ""));
       if (s.empreinte && s.empreinte !== synthEmpreinte(q, e)) syn.appendChild(h("p", { class: "sq-note", text: "Proposée avant les dernières réponses." }));
       if (s.terrain) syn.appendChild(h("button", { type: "button", class: "arb-out", "data-k": "arb:retsyn", onclick: function () {
         var x = { texte: s.texte };
@@ -2972,8 +3564,11 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
         ab.syn.textContent = "";
         while (syn.firstChild) ab.syn.appendChild(syn.firstChild);
       }, q.art);
+      // Arrivée d'une synthèse demandée ici : ses mots se posent en cascade avec leur bloc (jamais au chargement ni sur
+      // une mise à jour venue de la base).
+      if (s && !synAtt && ab.synArrivee) { ab.synArrivee = false; cascade(ab.syn.querySelector("p"), ab.syn.querySelectorAll(".cl-i")); }
     }
-    ab.syn.hidden = !s;
+    ab.syn.hidden = !s && !synAtt;
     // Raison, une fois réglée (une réouverture la range, au départ du focus si on l'écrit), et Défaire sur la ligne d'état.
     if (arb && document.activeElement !== ab.raison) { ab.raison.value = typeof arb.raison === "string" ? arb.raison : ""; fit(ab.raison); }
     cacher(q, ab.raisonBox, !arb || ouverte);
@@ -3009,7 +3604,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     });
     var leurs = grp.map(function (g) { return (seul ? "toi " : grp.length === 1 ? "vous " : liste(g.noms) + " ") + g.pos; });
     var fil = !!commentsApi && typeof commentsApi.openComposer === "function" && !composerKo && !q.ab.filKo;
-    return { pour: liste(noms), texte: propre(noms.join(", ") + ", on n'est pas d'accord sur « " + q.titre + " » dans le quiz « " + QUIZ.nom + " » : moi " +
+    return { pour: liste(noms), texte: sansGras(noms.join(", ") + ", on n'est pas d'accord sur « " + q.titre + " » dans le quiz « " + QUIZ.nom + " » : moi " +
       enClair(q, e.m) + ", " + leurs.join(", ") + "." + (fil ? " J'ai ouvert un fil sur la question, on en parle ?" : " On en parle ?")) };
   }
   // Toute sortie : l'arbitrage remplace le précédent. Une sortie qui change sa réponse garde l'ancienne (avant) pour défaire.
@@ -3043,7 +3638,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     q.ab.note = bougent(vus); q.ab.err = false; q.ab.ouvert = false;
     rouvrir(q);
     var infoAvant = q.avisCle;
-    fill(q); paint(q, "avant" in a); recap(); save(true);
+    fill(q); paint(q, "avant" in a); geste = true; recap(); save(true);
     // Le changement d'état se lit : la ligne d'état entière (marque, « Retenu », Trancher et Défaire qui y reviennent),
     // puis ce qui remplace le côte à côte : la raison ou le message à discuter, et la ligne « Avis » qui le résume
     // (seulement si elle vient de changer : une ligne déjà là ne bouge pas).
@@ -3067,7 +3662,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     // De retour à trancher : les sorties sont dépliées, le focus va sur la première.
     q.ab.note = bougent(vus); q.ab.err = false; q.ab.ouvert = true;
     rouvrir(q);
-    fill(q); paint(q, false); recap(); save(true);
+    fill(q); paint(q, false); geste = true; recap(); save(true);
     pose([q.ab.etatL, q.ab.outs, q.ab.cols]);
     var btn = q.ab.outs.hidden ? null : q.ab.outs.querySelector("button");
     (btn && !q.ab.el.hidden ? btn : q.art).focus({ preventScroll: true });
@@ -3145,6 +3740,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       var s = synthValide(q, res);
       if (!s) { ab.note = "Réponse de Claude illisible : réessaie dans un moment."; ab.err = true; return; }
       s.le = new Date().toISOString(); s.empreinte = emp;
+      ab.synArrivee = true;
       var ss = Object.assign({}, state.syntheses);
       ss[q.id] = s; state.syntheses = ss;
       // La synthèse porte sa propre action (« Retenir la synthèse ») : les sorties se replient pour que la question tienne.
@@ -3164,6 +3760,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       var ae = document.activeElement, prendre = ab.versSyn && (!ae || ae === document.body || q.art.contains(ae));
       ab.versSyn = false;
       QS.forEach(avisPaint); recap();
+      ab.synArrivee = false;
       if (prendre) (ab.syn.querySelector('[data-k="arb:retsyn"]') || (ab.trancher.hidden ? q.art : ab.trancher)).focus({ preventScroll: true });
     });
   }
@@ -3177,10 +3774,10 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     // L'état vient d'etatQ, comme le bandeau et la marque sous chaque question : une divergence réglée n'est plus comptée.
     var qs = [], n = { divergence: 0, reglee: 0, discuter: 0 };
     actives().forEach(function (q) {
-      var l = avisDe(q), reel = etatQ(q).etat, et = reel === "rouverte" ? "divergence" : reel;
+      var eq = etatQ(q), l = avisDe(q), reel = eq.etat, et = reel === "rouverte" ? "divergence" : reel;
       if (et in n) n[et]++;
       if (!l.length) return;
-      qs.push({ q: q, l: l, etat: reel });
+      qs.push({ q: q, l: l, etat: reel, e: eq });
     });
     // Ce qui reste à trancher d'abord, puis à discuter, réglé, et l'accord.
     var RANG = { divergence: 0, rouverte: 0, discuter: 1, reglee: 2 };
@@ -3224,7 +3821,11 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
             if (typeof note === "string" && note.trim()) l.appendChild(document.createTextNode(" (nuance" + (seul ? "" : " " + de(nomDe(a))) + " : " + coupe(note.trim(), 200) + ")"));
           });
           sub.appendChild(l);
+          // Ce que « Ce que ça implique » a dit à chacun, sous sa réponse (texte de Claude rendu, sans animation).
+          g.gens.forEach(function (a) { var il = impLigne(a, q, "avis-l"); if (il) sub.appendChild(il); });
         });
+        if (x.etat === "reglee" && x.e.revenu.length && (!x.e.arb || x.e.change.length))
+          sub.appendChild(h("span", { class: "avis-l avis-etat", text: revenuTexte(x.e) + "." }));
         ul.appendChild(h("li", null, h("button", { type: "button", class: "rrow", "data-k": "avis:" + q.id, "data-etat": x.etat || null, onclick: function () { go(QS.indexOf(q)); } },
           h("span", { class: "rrow-num", text: q.id }),
           h("span", { class: "rrow-t" }, ETAT_MARQUE[x.etat] ? h("span", { class: "sq-mark", "data-etat": x.etat, text: ETAT_MARQUE[x.etat] }) : null, q.titre), sub)));
@@ -3233,6 +3834,8 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     }
     avis.forEach(function (a) {
       if (a.autre) sec.appendChild(h("p", { class: "rnote", text: nomDe(a) + " ajoute : « " + coupe(a.autre, 400) + " »" }));
+      var ia = a.autre ? impLigne(a, null, "rnote") : null;
+      if (ia) sec.appendChild(ia);
     });
     return sec;
   }
@@ -3311,7 +3914,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     var r = filtreBtn.getBoundingClientRect();
     var a = filtreBtn.offsetParent !== null && r.bottom > 0 && r.top < window.innerHeight ? filtreBtn : null;
     majVue(a);
-    recap();
+    geste = true; recap();
   }
   var COMPTE = [["accord", "d'accord", "d'accord"], ["divergence", "divergence", "divergences"], ["reglee", "réglée", "réglées"], ["discuter", "à discuter", "à discuter"]];
   // « Juste les bloquantes » rejoint « Divergences seulement » dans le bandeau quand il est là : deux bascules de vue, un endroit.
@@ -3351,7 +3954,11 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   // validé (ids connus seulement), va dans reponses/<tour>.nuancesLues = { le, empreinte, contradictions } ; si les
   // réponses ou les nuances ont changé depuis (autre empreinte), le bandeau le dit.
   var NU_NOTE = 400, NU_TEXTE = 600, NU_TOTAL = 30000;
-  var nuBusy = false, nuMsg = "", nuCoupe = false;
+  var nuBusy = false, nuMsg = "", nuCoupe = false, nuArrivee = false;
+  // Arrivée d'une lecture demandée ici : chaque raison relevée qui apparaît se pose, ses mots en cascade.
+  function nuCascade(box) {
+    Array.prototype.forEach.call(box.querySelectorAll(".avis-c"), function (l) { cascade(l, l.querySelectorAll(".cl-i")); });
+  }
   // autre : la réponse d'un participant (son « Non » au cadrage dit qu'il ne le voit pas comme ça, sans recadrer).
   function nuValeur(q, v, autre) {
     if (q.type === "texte") return citer(v, NU_TEXTE);
@@ -3429,6 +4036,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       });
       // Ne rouvre pas le quiz : la lecture vit à côté des réponses.
       state.nuancesLues = { le: new Date().toISOString(), empreinte: e.empreinte, empreinteAvis: e.empreinteAvis, contradictions: list };
+      nuArrivee = true;
       save(true);
     }, function (err) {
       var code = (err && err.code) || "upstream_error";
@@ -3442,6 +4050,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       var avaitFocus = document.activeElement === nuBtn;
       nuBusy = false;
       QS.forEach(avisPaint); recap();
+      nuArrivee = false;
       if (avaitFocus && nuBtn.hidden) sq.focus({ preventScroll: true });
     });
   }
@@ -3606,6 +4215,290 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     closeAp();
   });
 
+  /* ---------- Ce que ça implique, chez un participant avant l'envoi ---------- */
+  // Pour qui n'a ni le code ni le contexte : au clic sur « Envoyer mes réponses », un récap s'ouvre s'il y a quelque
+  // chose à dire, sinon l'envoi part comme avant. Jamais bloquant : « Envoyer quand même » ou « Revoir ».
+  // Deux sources, une entrée par question au plus (ou « autre ») :
+  //   quiz    sa réponse diffère de celle du propriétaire et une option qu'il a choisie porte un implique moyen ou lourd
+  //           (écrit par la session Claude Code à la création du quiz) ; aucun appel ;
+  //   claude  une nuance, une réponse libre ou « autre chose » non vide : un seul appel sample.json, à ce clic, entrée
+  //           bornée ; Claude ne garde que ce qui propose ou demande quelque chose avec un enjeu de faisabilité.
+  // Erreur, refus, délai dépassé ou sample absent : on montre les entrées quiz, ou on envoie directement.
+  // Ce qui est montré va dans son avis : tours.<tour>.implique = {id | "autre": { poids, texte, source, cle, le, quiz? }}
+  // (cle : sa réponse à ce moment ; quiz : l'entrée quiz quand Claude a aussi parlé de la question). S'il revient ensuite
+  // à la réponse du propriétaire, tours.<tour>.revenu.<id> = { de, le } règle la question (etatQ).
+  var imp = $("imp"), impFrom = null, impEtat = null, impJeton = 0, impCours = null, impCache = null;
+  var IMP_DELAI = 12000, IMP_NOTE = 600, IMP_FOND = 1500, IMP_CTX = 4000, IMP_TOTAL = 24000, IMP_TEXTE = 300;
+  function impPossible() { return MOI.invite && MOI.connu === true && !lectureSeule() && !offline && ready && !state.termine; }
+  function impClaudeDispo() { return !!sample && sampleOk && typeof sample.json === "function"; }
+  function poidsTag(p) { return h("span", { class: "imp-poids", "data-poids": p }, h("span", { class: "vh", text: "poids " }), POIDS[p]); }
+  function plusLourd(a, b) { return POIDS_RANG[b] > POIDS_RANG[a] ? b : a; }
+  // Une entrée lue (son avis, ou celui d'un autre) : poids connu, texte non vide, borné ; sinon rien.
+  function impLu(x) {
+    if (!x || typeof x !== "object" || !own(POIDS, x.poids) || typeof x.texte !== "string" || !x.texte.trim()) return null;
+    var e = { poids: x.poids, texte: coupe(propre(x.texte).replace(/\s+/g, " ").trim(), 400), source: x.source === "quiz" ? "quiz" : "claude",
+      cle: x.cle === undefined ? null : clone(x.cle), le: typeof x.le === "string" ? x.le : "" };
+    var qz = x.quiz ? impLu(x.quiz) : null;
+    if (qz) e.quiz = { poids: qz.poids, texte: qz.texte };
+    return e;
+  }
+  function impliquesLus(o) {
+    var r = {};
+    Object.keys(obj(o)).forEach(function (k) { if (own(PAR_ID, k) || k === "autre") { var e = impLu(o[k]); if (e) r[k] = e; } });
+    return r;
+  }
+  function revenusLus(o) {
+    var r = {};
+    Object.keys(obj(o)).forEach(function (k) {
+      var x = o[k];
+      if (own(PAR_ID, k) && x && typeof x === "object" && x.de != null) r[k] = { de: clone(x.de), le: typeof x.le === "string" ? x.le : "" };
+    });
+    return r;
+  }
+  function revenuDe(a, q) { return a.revenu && own(a.revenu, q.id) ? a.revenu[q.id] : null; }
+  // Ce que le récap a dit à un participant sur une question (q null : « autre chose »), tant que ça vaut encore : même
+  // réponse qu'au moment du récap, ou revenu à la réponse retenue depuis.
+  function impDe(a, q) {
+    var im = a.implique || {}, id = q ? q.id : "autre", e = own(im, id) ? im[id] : null;
+    if (!e) return null;
+    if (!q) return a.autre ? e : null;
+    return hv(e.cle) === hv(avisValeur(q, a)) || revenuDe(a, q) ? e : null;
+  }
+  // Chez le propriétaire : « Ce que Claude a dit à Alex : » avec le poids et le texte (rendu, jamais animé ici).
+  function impLigne(a, q, cls) {
+    var e = impDe(a, q);
+    if (!e) return null;
+    var el = h("span", { class: cls + " imp-avis" }, "Ce que Claude a dit à " + nomDe(a) + " : ");
+    if (e.quiz) el.appendChild(h("span", null, poidsTag(e.quiz.poids), e.quiz.texte + " "));
+    el.appendChild(poidsTag(e.poids));
+    el.appendChild(e.source === "claude" ? h("span", { class: "cl-i" }, clInline(e.texte)) : document.createTextNode(e.texte));
+    if (e.source === "claude") el.appendChild(h("span", { class: "imp-sig", text: " · sans accès au code" }));
+    return el;
+  }
+  // Après le récap, revenir à la réponse du propriétaire règle la question (revenu) ; en repartir la rouvre.
+  function majRevenu(q) {
+    if (!MOI.invite || !proprio || q.type === "texte") return;
+    var e = state.implique[q.id], m = retenue(q, proprio), v = valeur(q), rv = state.revenu[q.id];
+    var accord = m != null && m !== "toi" && (v == null || hv(v) === hv(m));
+    if (!rv && accord && e && e.cle != null && e.cle !== "toi" && hv(e.cle) !== hv(m)) {
+      state.revenu = Object.assign({}, state.revenu);
+      state.revenu[q.id] = { de: clone(e.cle), le: new Date().toISOString() };
+    } else if (rv && !accord) {
+      state.revenu = Object.assign({}, state.revenu);
+      state.revenu[q.id] = null;
+    }
+  }
+  // Entrées quiz : réponse différente de celle du propriétaire, option choisie (et pas la sienne) moyenne ou lourde.
+  function impQuiz() {
+    var out = [];
+    if (!proprio) return out;
+    QS.forEach(function (q) {
+      if (q.masq || q.cadrage || q.type === "texte") return;
+      var v = valeur(q), m = retenue(q, proprio);
+      if (v == null || v === "toi" || !divergeDe(q, m, v)) return;
+      var vs = Array.isArray(v) ? v : [v], ms = Array.isArray(m) ? m : [m];
+      var opts = q.opts.filter(function (o) {
+        return o.implique && POIDS_RANG[o.implique.poids] >= 2 && vs.indexOf(o.k) >= 0 && ms.indexOf(o.k) < 0;
+      });
+      if (opts.length) out.push({ q: q, v: v, m: m, opts: opts });
+    });
+    return out;
+  }
+  // Le prénom du propriétaire pour « je ne sais pas, X tranchera » : user.profiles, jamais la base.
+  function prenomProprio() { return (MOI.proprio || "").trim().split(/\s+/)[0] || "le propriétaire"; }
+  // Entrée de Claude : contexte du quiz, puis pour chaque question où il a écrit quelque chose, le titre, les options
+  // avec leur implique, le fond, la réponse du propriétaire, la sienne et son texte ; puis « autre chose ». Borne stricte :
+  // un bloc qui ferait dépasser n'est pas envoyé, son id n'est donc pas accepté au retour.
+  function impEntree() {
+    var b = proprio, blocs = [], ids = {}, total = 0, qui = prenomProprio();
+    QS.forEach(function (q) {
+      if (q.masq) return;
+      var t = q.type === "texte" ? valeur(q) : state.notes[q.id];
+      t = typeof t === "string" ? t.trim() : "";
+      if (!t) return;
+      var m = b ? retenue(q, b) : null, v = q.type === "texte" ? null : valeur(q);
+      var L = ["Question " + q.id + " : " + q.titre];
+      if (q.contexte) L.push(coupe(q.contexte, 600));
+      if (q.cadrage) L.push("C'est la question de cadrage : le propriétaire vérifie qu'il a bien compris le sujet.");
+      else if (q.type !== "texte") L.push("Options : " + q.opts.filter(function (o) { return !o.toi; }).map(function (o) {
+        return o.k + ") " + o.texte + (o.implique ? " [ce que ça implique : " + o.implique.poids + ", " + o.implique.texte + "]" : "");
+      }).join(" ; "));
+      if (q.fond) L.push("Fond : " + coupe(q.fond, IMP_FOND));
+      L.push("Réponse du propriétaire : " + (m == null ? "pas encore de réponse" : nuValeur(q, m)));
+      if (q.type === "texte") L.push("Réponse libre du participant : " + citer(t, IMP_NOTE));
+      else L.push("Réponse du participant : " + (v == null ? "pas de réponse (d'accord par défaut)" : nuValeur(q, v, true)), "Sa nuance : " + citer(t, IMP_NOTE));
+      var bloc = L.join("\n");
+      if (total + bloc.length > IMP_TOTAL) return;
+      total += bloc.length + 2; ids[q.id] = 1; blocs.push(bloc);
+    });
+    var au = (state.autre || "").trim();
+    if (au) {
+      var ba = "Autre chose (id « autre ») : " + citer(au, 800);
+      if (total + ba.length <= IMP_TOTAL) { ids.autre = 1; blocs.push(ba); }
+    }
+    if (!blocs.length) return null;
+    var L = ["Tu relis l'avis d'un participant à un quiz de décision, juste avant qu'il l'envoie. Il n'a ni le code ni le contexte du projet ; le propriétaire du quiz décide et applique.",
+      "Ne garde que les textes ci-dessous (nuances, réponses libres, « autre chose ») qui proposent ou demandent quelque chose avec un enjeu de faisabilité : du travail en plus, un risque, une dépendance. Une précision, un accord ou une préférence sans conséquence ne comptent pas. Dans le doute, ne garde rien.",
+      "Pour chacun : un poids (leger, moyen, lourd, ou inconnu si ce qui suit ne permet pas de juger) et une ou deux phrases sur ce que ça implique concrètement, d'après les options et ce qu'elles impliquent, le fond et le contexte. Quand le fond dit ce que ça apporte, mets le coût en face du gain, sans conclure à la place de personne.",
+      "Ton : tutoiement, cool, court, jamais condescendant, pas de « non » sec. Tu ne sais que ce qui suit : n'invente ni chiffre ni durée. S'il te manque l'information, dis-le simplement : « je ne sais pas, " + qui + " tranchera ».",
+      DONNEES,
+      "Réponds uniquement avec un objet JSON de cette forme : {\"implique\":[{\"id\":\"Q2\",\"poids\":\"moyen\",\"texte\":\"<une ou deux phrases en français, " + IMP_TEXTE + " caractères au plus>\"}]}. " +
+        "id : un des ids ci-dessous (« autre » pour autre chose), au plus une entrée par id. Texte simple, au plus un mot en **gras**, sans tiret cadratin. Rien à signaler : {\"implique\":[]}.",
+      "", "Quiz : " + QUIZ.titre];
+    if (typeof QUIZ.contexte === "string" && QUIZ.contexte.trim()) L.push("Contexte : " + coupe(QUIZ.contexte, IMP_CTX));
+    L.push("", blocs.join("\n\n"));
+    var texte = L.join("\n");
+    return { texte: texte, ids: ids, cle: hache(texte) };
+  }
+  // Réponse de Claude : ids envoyés seulement, une entrée par id, poids hors liste = inconnu, texte nettoyé et borné.
+  function impValide(res, ids) {
+    if (!res || typeof res !== "object" || !Array.isArray(res.implique)) return null;
+    var vus = {}, list = [];
+    res.implique.forEach(function (c) {
+      if (!c || typeof c !== "object" || typeof c.id !== "string" || !own(ids, c.id) || vus[c.id]) return;
+      var t = typeof c.texte === "string" ? coupe(propre(c.texte).replace(/\s+/g, " ").trim(), IMP_TEXTE) : "";
+      if (!t) return;
+      vus[c.id] = true;
+      list.push({ id: c.id, poids: own(POIDS, c.poids) ? c.poids : "inconnu", texte: t });
+    });
+    return list;
+  }
+  // Un appel par entrée distincte : la réponse est gardée pour la visite (un second clic sur la même entrée ne rappelle
+  // pas Claude). Au-delà de IMP_DELAI, l'appel est abandonné (null).
+  function impAppel(ent) {
+    var ctl = new AbortController(), fini = false;
+    var p = new Promise(function (res) {
+      var t = setTimeout(function () { if (!fini) { fini = true; ctl.abort(); res(null); } }, IMP_DELAI);
+      Promise.resolve().then(function () { return sample.json(ent.texte, { signal: ctl.signal }); }).then(function (r) {
+        if (fini) return;
+        fini = true; clearTimeout(t); res(impValide(r, ent.ids));
+      }, function (err) {
+        if (fini) return;
+        fini = true; clearTimeout(t);
+        if (COUPE[(err && err.code) || ""]) { sampleOk = false; QS.forEach(creusePaint); }
+        res(null);
+      });
+    });
+    var cours = impCours = { cle: ent.cle, p: p, ctl: ctl };
+    p.then(function (list) {
+      if (impCours === cours) impCours = null;
+      if (list) impCache = { cle: ent.cle, list: list };
+    });
+    return p;
+  }
+  function impSoumettre() {
+    var quiz = impQuiz(), ent = impClaudeDispo() ? impEntree() : null, jeton = ++impJeton;
+    var cache = ent && impCache && impCache.cle === ent.cle ? impCache.list : null;
+    if (!quiz.length && (!ent || cache && !cache.length)) { impRanger([], []); envoyer(""); return; }
+    impEtat = { quiz: quiz, claude: cache, attente: !!ent && !cache, rate: false };
+    impRanger(quiz, cache || []);
+    openImp();
+    if (!impEtat.attente) return;
+    var p = impCours && impCours.cle === ent.cle ? impCours.p : impAppel(ent);
+    p.then(function (list) {
+      // Récap refermé (Revoir) ou envoyé entre-temps : la réponse reste en cache pour le prochain clic.
+      if (jeton !== impJeton || imp.hidden) return;
+      impEtat.attente = false;
+      if (!list) impEtat.rate = true; else impEtat.claude = list;
+      if (!impEtat.quiz.length && !(list && list.length)) { impRanger([], []); envoyer(""); closeImp(false); return; }
+      impRanger(impEtat.quiz, list || []);
+      impPaint(!!(list && list.length));
+    });
+  }
+  // Ce qui est montré va dans son avis (remplace le récap d'avant ; une question où il est revenu garde le sien).
+  function impRanger(quiz, cl) {
+    var now = new Date().toISOString(), out = {};
+    Object.keys(state.revenu).forEach(function (id) { if (state.revenu[id] && state.implique[id]) out[id] = state.implique[id]; });
+    quiz.forEach(function (x) {
+      out[x.q.id] = { poids: x.opts.reduce(function (p, o) { return plusLourd(p, o.implique.poids); }, "leger"),
+        texte: x.opts.map(function (o) { return o.implique.texte; }).join(" "), source: "quiz", cle: clone(x.v), le: now };
+    });
+    cl.forEach(function (c) {
+      var q = PAR_ID[c.id], e = { poids: c.poids, texte: c.texte, source: "claude", cle: c.id === "autre" || !q ? null : clone(valeur(q)), le: now };
+      var qz = own(out, c.id) && out[c.id].source === "quiz" && out[c.id].le === now ? out[c.id] : null;
+      if (qz) e.quiz = { poids: qz.poids, texte: qz.texte };
+      out[c.id] = e;
+    });
+    state.implique = out;
+    save();
+  }
+  // Le récap : une entrée par question, dans l'ordre du quiz, puis « autre chose » ; l'attente de Claude façon rédaction
+  // (le trait bat) ; à l'arrivée, ce que Claude a écrit se pose en cascade. Les entrées quiz ne bougent jamais.
+  function impPaint(arrivee) {
+    var E = impEtat, box = $("imp-corps"), par = {}, ordre = [], nouveaux = [];
+    var Nom = nomDe({ proprio: true });
+    E.quiz.forEach(function (x) { (par[x.q.id] = par[x.q.id] || {}).quiz = x; });
+    (E.claude || []).forEach(function (c) { (par[c.id] = par[c.id] || {}).claude = c; });
+    QS.forEach(function (q) { if (par[q.id]) ordre.push(q.id); });
+    if (par.autre) ordre.push("autre");
+    box.textContent = "";
+    ordre.forEach(function (id) {
+      var x = par[id], q = PAR_ID[id] || null, el = h("div", { class: "imp-e", "data-k": "imp:" + id });
+      el.appendChild(q ? h("p", { class: "ap-qt" }, h("span", { class: "ap-qn", text: q.id }), q.titre) : h("p", { class: "ap-qt", text: "Autre chose" }));
+      if (x.quiz) {
+        var z = x.quiz, plus = z.opts.length > 1;
+        el.appendChild(h("p", { class: "imp-ctx", text: "Tu as pris " + court(q, z.v) + (z.m != null ? ", " + Nom + " a pris " + court(q, z.m) : "") + "." }));
+        z.opts.forEach(function (o) {
+          el.appendChild(h("p", { class: "imp-l" }, poidsTag(o.implique.poids), plus ? h("span", { class: "imp-k", text: LETTERS[q.opts.indexOf(o)] }) : null, o.implique.texte));
+        });
+      }
+      if (x.claude) {
+        var t = !q ? state.autre : q.type === "texte" ? valeur(q) : state.notes[q.id];
+        t = typeof t === "string" ? t.trim().replace(/\s+/g, " ") : "";
+        var cl = h("div", { class: "imp-cl" });
+        if (t) cl.appendChild(h("p", { class: "imp-ctx", text: (!q ? "Tu ajoutes" : q.type === "texte" ? "Ta réponse" : "Ta nuance") + " : « " + coupe(t, 140) + " »" }));
+        cl.appendChild(h("p", { class: "imp-l" }, poidsTag(x.claude.poids), h("span", { class: "cl-i" }, clInline(x.claude.texte))));
+        cl.appendChild(h("p", { class: "cr-sig" }, h("b", { text: "Claude" }), " · sans accès au code"));
+        el.appendChild(cl);
+        if (arrivee) nouveaux.push(cl);
+      }
+      box.appendChild(el);
+    });
+    if (E.attente) box.appendChild(h("p", { class: "cl-att attend imp-att" }, h("span", { class: "avis-h", text: "Claude" }),
+      "lit ce que tu as écrit", h("span", { class: "cl-caret", "aria-hidden": "true" })));
+    if (E.rate) box.appendChild(h("p", { class: "sq-note", text: "Claude n'a pas pu relire ce que tu as écrit : rien de bloquant, tu peux envoyer." }));
+    nouveaux.forEach(function (cl) { cascade(cl, cl.querySelectorAll(".cl-i")); });
+  }
+  function openImp() {
+    if (!keys.hidden) closeKeys();
+    impFrom = document.activeElement;
+    imp.hidden = false;
+    impPaint(false);
+    $("imp-go").focus();
+  }
+  // versQ : « Revoir » amène ensuite à la question ; sinon le focus revient d'où l'on venait (le bouton d'envoi).
+  function closeImp(versQ) {
+    imp.hidden = true;
+    if (versQ) return;
+    var to = impFrom && impFrom !== document.body && impFrom.focus && !impFrom.disabled ? impFrom : $("fin");
+    to.focus({ preventScroll: true });
+  }
+  $("imp-close").addEventListener("click", function () { closeImp(false); });
+  imp.addEventListener("click", function (e) { if (e.target === imp) closeImp(false); });
+  $("imp-go").addEventListener("click", function () {
+    // Ce qui est montré est déjà rangé ; un appel encore en cours est abandonné.
+    impJeton++;
+    if (impCours) { impCours.ctl.abort(); impCours = null; }
+    envoyer("");
+    closeImp(false);
+  });
+  $("imp-revoir").addEventListener("click", function () {
+    var E = impEtat, q = null;
+    QS.some(function (x) {
+      var dit = E.quiz.some(function (z) { return z.q === x; }) || (E.claude || []).some(function (c) { return c.id === x.id; });
+      if (dit) q = x;
+      return dit;
+    });
+    // En attente de Claude, rien n'est encore dit : la première question qu'il lit.
+    if (!q && E.attente) QS.some(function (x) {
+      var t = x.type === "texte" ? valeur(x) : state.notes[x.id];
+      if (!x.masq && typeof t === "string" && t.trim()) q = x;
+      return !!q;
+    });
+    closeImp(true);
+    if (q) go(QS.indexOf(q)); else goFin();
+  });
+
   /* ---------- Navigation : une cible proche défile ; une cible lointaine part en poussière et revient en place ---------- */
   var cur = 0, lock = 0, busy = null;
   var OUT = 260, IN = 360;
@@ -3622,6 +4515,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     var ri = QS[i].ri, lr = railList.getBoundingClientRect(), r = ri.getBoundingClientRect();
     if (lr.height && (r.top < lr.top || r.bottom > lr.bottom)) ri.scrollIntoView({ block: "nearest" });
     if (pills.scrollWidth > pills.clientWidth) QS[i].pill.scrollIntoView({ block: "nearest", inline: "nearest" });
+    lumiere("glisse");
   }
   function go(i) {
     i = Math.max(0, Math.min(QS.length - 1, i));
@@ -3745,6 +4639,11 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       else if (e.key === "Tab") pieger(ap, e);
       return;
     }
+    if (!imp.hidden) {
+      if (e.key === "Escape") { e.preventDefault(); closeImp(false); }
+      else if (e.key === "Tab") pieger(imp, e);
+      return;
+    }
     var t = e.target;
     if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.isContentEditable)) {
       if (e.key === "Escape") { e.preventDefault(); t.blur(); var art = t.closest(".q"); if (art) art.focus({ preventScroll: true }); }
@@ -3805,6 +4704,12 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     if (Object.keys(t).length) b.tenir = t;
     if (CONDITIONNEL) b.masquees = QS.filter(function (q) { return q.masq; }).map(function (q) { return q.id; });
     if (state.approfondir && !MOI.invite) b.approfondir = state.approfondir;
+    // Chez un participant : ce que « Ce que ça implique » lui a montré, et ses retours à la réponse retenue après.
+    if (MOI.invite) {
+      var im = impliquesLus(state.implique), rv = revenusLus(state.revenu);
+      if (Object.keys(im).length) b.implique = im;
+      if (Object.keys(rv).length) b.revenu = rv;
+    }
     // À plusieurs, chez le propriétaire : lecture des nuances, arbitrages, synthèses, attendus (null = retiré).
     if (!MOI.invite) {
       if (state.nuancesLues) b.nuancesLues = state.nuancesLues;
@@ -3929,6 +4834,11 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
           if (!state.attendus.length && Array.isArray(d.attendus)) state.attendus = d.attendus.filter(function (x) { return typeof x === "string" && x; });
           if (state.attend == null && Array.isArray(d.attend)) state.attend = d.attend.filter(function (x) { return typeof x === "string"; });
         }
+        if (MOI.invite) {
+          // Ce qui a été montré ou fait avant la fin du chargement passe devant (null : retiré).
+          state.implique = Object.assign(impliquesLus(d.implique), state.implique);
+          state.revenu = Object.assign(revenusLus(d.revenu), state.revenu);
+        }
         var ap = d.approfondir;
         if (!state.approfondir && ap && typeof ap.le === "string") state.approfondir = { le: ap.le, texte: typeof ap.texte === "string" ? ap.texte : "" };
         // Creuse : le stocké (cloné), puis ce qui a été demandé avant la fin du chargement, sans doublon, 5 au plus.
@@ -3967,5 +4877,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     offline = true;
     setSave("Stockage indisponible (" + ((e && e.code) || "erreur") + ") : tes réponses ne sont pas enregistrées", true);
   });
+  // La lumière ne glisse qu'une fois la page posée (le saut vers la première question vide ne se voit pas).
+  charge.then(function () { setTimeout(function () { lumLibre = true; }, 300); });
 })();
 </script>

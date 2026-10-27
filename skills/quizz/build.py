@@ -24,6 +24,35 @@ TYPES = ("choix", "multi", "texte")
 FORMATS = ("slack", "markdown", "texte")
 CONTEXTE_MAX = 12000  # contexte global de Creuse, en caractères
 FOND_MAX = 8000  # fond d'une question
+POIDS = ("leger", "moyen", "lourd")  # poids d'un « implique » d'option
+IMPLIQUE_MAX = 400
+# Une durée chiffrée (« 2 jours », « 30 min ») : jamais dans un « implique », qui ne dit que ce que le code montre.
+# Une estimation d'effort (jours, semaines, sprints...), pas une valeur factuelle comme « un délai de 12 s ».
+DUREE = re.compile(r"\d+(?:[.,]\d+)?\s*(?:j|jours?|sem|semaines?|sprints?|days?|weeks?|jours?-homme|heures? de (?:travail|dev))\b",
+                   re.IGNORECASE)
+
+
+def check_implique(o, where, errors):
+    """« implique » d'une option : {"poids": "leger" | "moyen" | "lourd", "texte": une phrase concrète}. Écrit depuis le
+    code, seulement quand il y a quelque chose à dire ; jamais de durée ni de chiffre inventé."""
+    if "implique" not in o:
+        return
+    imp = o["implique"]
+    w = f"{where}, option {o.get('k', '?')} : implique"
+    if not isinstance(imp, dict) or set(imp) - {"poids", "texte"}:
+        errors.append(f"{w} attendu sous la forme {{\"poids\": \"leger|moyen|lourd\", \"texte\": \"...\"}}")
+        return
+    if imp.get("poids") not in POIDS:
+        errors.append(f"{w} : poids {imp.get('poids')!r}, attendu {', '.join(POIDS)}")
+    t = imp.get("texte")
+    if not isinstance(t, str) or not t.strip():
+        errors.append(f"{w} : texte non vide attendu (ou retire le champ quand il n'y a rien à dire)")
+    elif len(t) > IMPLIQUE_MAX:
+        errors.append(f"{w} : texte trop long ({len(t)} caractères, {IMPLIQUE_MAX} au plus)")
+    elif "\u2014" in t:
+        errors.append(f"{w} : tiret cadratin (U+2014), le remplacer par un tiret simple ou reformuler")
+    elif DUREE.search(t):
+        errors.append(f"{w} : durée chiffrée ({DUREE.search(t).group(0)!r}) : dis ce que le code demande, sans estimer de durée")
 
 
 def check_si(q, where, avant, bloquantes, errors):
@@ -127,6 +156,12 @@ def check(data):
             elif q.get("cadrage"):
                 errors.append(f"{where} : pas de fond sur le cadrage (Creuse n'y est pas proposé)")
         check_si(q, where, avant, bloquantes, errors)
+        # « implique » vit sur une option de choix ou de multi : ni sur la question, ni sur une question texte ou de cadrage.
+        if "implique" in q:
+            errors.append(f"{where} : implique se met sur une option (choix ou multi), pas sur la question")
+        if (q.get("cadrage") or kind == "texte") and isinstance(q.get("options"), list) and any(
+                isinstance(o, dict) and "implique" in o for o in q["options"]):
+            errors.append(f"{where} : pas d'implique sur une question {'de cadrage' if q.get('cadrage') else 'texte'}")
         if q.get("bloquant") is True and isinstance(qid, str):
             bloquantes.add(qid)
         if q.get("cadrage"):
@@ -153,6 +188,8 @@ def check(data):
             for j, o in enumerate(opts, 1):
                 if not isinstance(o, dict):
                     errors.append(f"{where} : option {j} : objet {{\"k\": \"a\", \"texte\": ...}} attendu")
+                else:
+                    check_implique(o, where, errors)
             opts = [o for o in opts if isinstance(o, dict)]
             keys = [o.get("k") for o in opts]
             if len(set(keys)) != len(keys) or any(not isinstance(k, str) or not k or k == "toi" for k in keys):
