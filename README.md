@@ -31,7 +31,7 @@ Pour recevoir les nouvelles versions : `/plugin`, onglet Marketplaces, `quizz`, 
 - Recadrer (touche x) : si le quiz part de travers, dis ce qui cloche, Claude réécrit les questions.
 - Messages à envoyer (Slack, mail...) prêts à copier, dans ton ton. Rien n'est envoyé à ta place.
 - Après l'envoi : ce que Claude a appliqué, ses prédictions sur tes réponses, et « Approfondir » pour le tour suivant.
-- À plusieurs : partage le quiz (droit Contributeur), chacun répond de son côté sans voir les autres, puis les réponses et les divergences se dévoilent.
+- À plusieurs : partage le quiz (droit Contributeur). Les autres relisent tes choix et ne répondent que là où ils ne sont pas d'accord (une question laissée vide vaut accord). Tu règles chaque divergence dans la page (garder ta réponse, retenir la leur, une synthèse de Claude, ou à discuter), puis « Appliquer » : c'est toujours toi qui lances l'implémentation.
 - Un registre des décisions commun à tous tes projets.
 
 ## Prérequis
