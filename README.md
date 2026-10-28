@@ -1,8 +1,10 @@
 # /quizz
 
-Un skill Claude Code. Quand Claude a plusieurs questions à te poser (choix de design, arbitrages, priorités, réponses à envoyer), au lieu d'un pavé il publie un quiz cliquable dans un artefact claude.ai. Chaque option dit sa conséquence et Claude donne sa reco. Tu envoies : Claude relit tes réponses, applique, et écrit dans la page ce qu'il a fait.
+Un skill Claude Code. Quand une tâche a plusieurs décisions en suspens, ou qu'un brainstorm s'impose, Claude en fait un quiz cliquable dans un artefact claude.ai au lieu d'un pavé de questions. Chaque option dit ce qu'elle implique et Claude donne sa reco. Tu réponds en quelques clics : Claude relit tes réponses, applique, et écrit dans la page ce qu'il a fait.
 
-Marche dans Claude Code : le terminal ou l'onglet Code de l'app Claude desktop. Pas dans le chat claude.ai.
+À plusieurs, ça devient une sorte de « prompting multiplayer ». Les questions viennent de l'agent qui a le contexte (le code, tes outils) et qui implémentera ensuite : ce qui lui manque, ce sont les choix, et on peut être plusieurs à les lui donner. Tu partages le lien, les autres relisent tes choix et ne répondent que là où ils ne sont pas d'accord, Claude leur dit avant l'envoi ce qu'un choix coûte, et tu tranches avant de lancer l'implémentation.
+
+Pour répondre à un quiz qu'on te partage, rien à installer : le lien suffit, connecté à claude.ai. Pour lancer tes propres quiz, il faut Claude Code : le terminal ou l'onglet Code de l'app Claude desktop, pas le chat claude.ai.
 
 ## Installer
 
