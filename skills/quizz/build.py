@@ -13,10 +13,14 @@ rien, le nom est échappé pour <title>, et chaque « < » du JSON devient \\u00
 fermer la balise <script> qui le contient.
 """
 import colorsys
+import hashlib
 import html
 import json
+import math
 import re
+import struct
 import sys
+from html.parser import HTMLParser
 from pathlib import Path
 
 SEGMENT = re.compile(r"^[A-Za-z0-9_.~:@+-]{1,60}$")
@@ -30,6 +34,271 @@ IMPLIQUE_MAX = 400
 # Une estimation d'effort (jours, semaines, sprints...), pas une valeur factuelle comme « un délai de 12 s ».
 DUREE = re.compile(r"\d+(?:[.,]\d+)?\s*(?:j|jours?|sem|semaines?|sprints?|days?|weeks?|jours?-homme|heures? de (?:travail|dev))\b",
                    re.IGNORECASE)
+VISUELS_PAR_QUESTION = 4
+VISUEL_ALT_MAX = 600
+VISUEL_LEGENDE_MAX = 240
+VISUEL_CODE_MAX = 20000  # html + css d'un visuel dessiné, en caractères : ça part dans la page et dans Creuse
+VISUEL_COTE_MAX = 100000  # côté lu dans un fichier : au-delà, le fichier est hostile ou abîmé
+VISUEL_TOILE = (640, 400)  # largeur et hauteur par défaut de la toile d'un visuel dessiné
+VISUEL_TOILE_BORNES = (80, 2400)
+# Limites de publication d'un artefact : 15 Mo par fichier, 64 Mo et 255 fichiers par publication (la page en est un).
+IMAGE_OCTETS_MAX = 15 * 1024 * 1024
+IMAGES_OCTETS_MAX = 64 * 1024 * 1024
+IMAGES_NOMBRE_MAX = 254
+IMAGE_LOURDE = 3 * 1024 * 1024  # au-delà, le build le signale : la page charge lentement
+
+# Un visuel dessiné est une image vivante : ni script, ni élément qui charge ou embarque autre chose, et rien
+# d'extérieur (une page publiée n'a pas de réseau). Refusé ici pour donner une erreur claire plutôt qu'un rendu cassé.
+# Ce n'est pas la barrière de sécurité : html.parser ne découpe pas le HTML comme un navigateur. La barrière est
+# visuelPropre dans le gabarit, qui filtre l'arbre réellement analysé.
+BALISES_INTERDITES = {"script", "iframe", "frame", "frameset", "object", "embed", "applet", "link", "meta", "base",
+                      "html", "head", "body", "title", "noscript", "template", "slot"}
+ATTRS_URL = {"src", "href", "xlink:href", "poster", "action", "formaction", "data", "background", "ping"}
+URL_PERMISE = re.compile(r"^\s*(?:#|data:image/|$)", re.IGNORECASE)
+CSS_URL = re.compile(r"""url\(\s*(?:"([^"]*)"|'([^']*)'|([^)\s]*))""", re.IGNORECASE)
+CSS_INTERDIT = re.compile(r"@import|image-set\(|(?<![\w-])src\(", re.IGNORECASE)
+CSS_ECHAPPE = re.compile(r"\\([0-9a-fA-F]{1,6})\s?|\\(.)")
+CSS_RACINE = re.compile(r"(?<![\w.#-])(?:html|body)\b(?=[^{}]*\{)|:root\b", re.IGNORECASE)
+
+
+def css_lisible(css):
+    """Le CSS tel que le navigateur le lit : u\\72l( vaut url(, et les commentaires ne comptent pas."""
+    def un(m):
+        if m.group(2):
+            return m.group(2)
+        n = int(m.group(1), 16)
+        return chr(n) if 0 < n <= 0x10FFFF else ""
+    return CSS_ECHAPPE.sub(un, re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL))
+
+
+def erreurs_css(css):
+    err = []
+    css = css_lisible(css)
+    if CSS_INTERDIT.search(css):
+        err.append("@import, image-set() et src() sont refusés : une page publiée ne charge rien d'ailleurs")
+    for m in CSS_URL.finditer(css):
+        cible = next((g for g in m.groups() if g is not None), "")
+        if not URL_PERMISE.match(cible):
+            err.append(f"url({cible[:60]}) : seules les data:image et les ancres # passent, une page publiée ne charge rien d'ailleurs")
+            break
+    if CSS_RACINE.search(css):
+        err.append("sélecteur html, body ou :root : le visuel a son propre arbre, ils n'y atteignent rien ; utilise :host ou une classe")
+    return err
+
+
+class LectureVisuel(HTMLParser):
+    """Relève ce qu'un visuel dessiné n'a pas le droit de contenir."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.erreurs, self.pile = [], []
+
+    def handle_starttag(self, tag, attrs):
+        tag = tag.lower()
+        if tag in BALISES_INTERDITES:
+            self.erreurs.append(f"balise <{tag}> interdite : un visuel est une image vivante, sans script ni contenu extérieur")
+        for nom, val in attrs:
+            nom = nom.lower()
+            if nom.startswith("on"):
+                self.erreurs.append(f"attribut {nom} interdit : pas de script dans un visuel")
+            elif nom == "srcset":
+                self.erreurs.append("srcset refusé : un seul src suffit à un visuel")
+            elif nom in ATTRS_URL and not URL_PERMISE.match(val or ""):
+                self.erreurs.append(f"{nom}={(val or '')[:60]!r} : seules les data:image et les ancres # passent")
+            elif "url(" in (val or "").lower() or nom == "style":
+                self.erreurs += [e for e in erreurs_css(val or "") if not e.startswith("sélecteur")]
+        self.pile.append(tag)
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        self.pile.pop()
+
+    def handle_endtag(self, tag):
+        if tag.lower() in self.pile:
+            while self.pile.pop() != tag.lower():
+                pass
+
+    def handle_data(self, data):
+        if self.pile and self.pile[-1] == "style":
+            self.erreurs += erreurs_css(data)
+
+
+def check_visuel(v, where, errors):
+    """Un visuel : dessiné {"html", "css"?, "largeur"?, "hauteur"?} ou fichier {"src"}, avec "alt" et "legende"?.
+    alt est obligatoire : c'est le texte de secours, et Claude n'a rien d'autre quand il ne peut pas regarder."""
+    if not isinstance(v, dict) or set(v) - {"html", "css", "largeur", "hauteur", "src", "alt", "legende"}:
+        errors.append(f"{where} : visuel attendu sous la forme {{\"html\": \"<div>...</div>\", \"css\": \"...\", \"alt\": \"ce qu'on y voit\"}} "
+                      "ou {\"src\": \"capture.png\", \"alt\": \"ce qu'on y voit\"}")
+        return
+    alt = v.get("alt")
+    if not isinstance(alt, str) or not alt.strip():
+        errors.append(f"{where} : visuel sans alt (ce qu'on y voit, concrètement : texte de secours et description pour Claude)")
+    elif len(alt) > VISUEL_ALT_MAX:
+        errors.append(f"{where} : alt trop long ({len(alt)} caractères, {VISUEL_ALT_MAX} au plus)")
+    leg = v.get("legende")
+    if leg is not None and (not isinstance(leg, str) or not leg.strip()):
+        errors.append(f"{where} : legende : texte non vide attendu (ou retire le champ)")
+    elif leg is not None and len(leg) > VISUEL_LEGENDE_MAX:
+        errors.append(f"{where} : legende trop longue ({len(leg)} caractères, {VISUEL_LEGENDE_MAX} au plus)")
+    if ("html" in v) == ("src" in v):
+        errors.append(f"{where} : un visuel a soit html (dessiné), soit src (fichier), pas les deux")
+        return
+    if "src" in v:
+        if set(v) & {"css", "largeur", "hauteur"}:
+            errors.append(f"{where} : css, largeur et hauteur ne valent que pour un visuel dessiné (html)")
+        src = v["src"]
+        if not isinstance(src, str) or not src.strip():
+            errors.append(f"{where} : src : chemin du fichier attendu, absolu ou relatif au JSON")
+        elif re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", src) or src.startswith("//"):
+            errors.append(f"{where} : src {src[:60]!r} : un fichier local est attendu, pas une URL (une page publiée ne charge "
+                          "rien d'ailleurs) ; télécharge-le d'abord, ou dessine le visuel en html")
+        return
+    code, css = v["html"], v.get("css", "")
+    if not isinstance(code, str) or not code.strip():
+        errors.append(f"{where} : html : code du visuel attendu, non vide")
+        return
+    if not isinstance(css, str):
+        errors.append(f"{where} : css : texte attendu")
+        return
+    if len(code) + len(css) > VISUEL_CODE_MAX:
+        errors.append(f"{where} : visuel trop long ({len(code) + len(css)} caractères de html et css, {VISUEL_CODE_MAX} au plus)")
+    for k in ("largeur", "hauteur"):
+        if k in v and (isinstance(v[k], bool) or not isinstance(v[k], int)
+                       or not VISUEL_TOILE_BORNES[0] <= v[k] <= VISUEL_TOILE_BORNES[1]):
+            errors.append(f"{where} : {k} : nombre entier de {VISUEL_TOILE_BORNES[0]} à {VISUEL_TOILE_BORNES[1]} (px de la toile)")
+    if "<![" in code or "<?" in code:
+        errors.append(f"{where} : visuel : <![ et <? sont refusés (CDATA, instructions) : écris du HTML simple")
+        return
+    if re.search(r"&(?:mdash|#0*8212|#x0*2014);?", code, re.IGNORECASE) or re.search(r"\\0*2014", code + css):
+        errors.append(f"{where} : visuel : tiret cadratin encodé (entité ou \\2014), le remplacer par un tiret simple ou reformuler")
+    lecture = LectureVisuel()
+    try:
+        lecture.feed(code)
+        lecture.close()
+    except (AssertionError, NotImplementedError, ValueError):
+        errors.append(f"{where} : visuel : html illisible, écris du HTML simple")
+        return
+    for e in dict.fromkeys(lecture.erreurs + erreurs_css(css)):
+        errors.append(f"{where} : visuel : {e}")
+
+
+def visuels_du_quiz(data):
+    """Chaque visuel du quiz, avec où il est : [(où, visuel)]. Seulement les objets, la forme a été vérifiée avant."""
+    out = []
+    for q in data.get("questions") or []:
+        if not isinstance(q, dict):
+            continue
+        v = q.get("visuel")
+        for x in v if isinstance(v, list) else [v] if v is not None else []:
+            if isinstance(x, dict):
+                out.append((f"question {q.get('id', '?')}", x))
+        for o in q.get("options") or [] if isinstance(q.get("options"), list) else []:
+            if isinstance(o, dict) and isinstance(o.get("visuel"), dict):
+                out.append((f"question {q.get('id', '?')}, option {o.get('k', '?')}", o["visuel"]))
+    return out
+
+
+def dimensions_svg(octets):
+    texte = octets.decode("utf-8", "replace")
+    racine = re.search(r"<svg\b[^>]*>", texte, re.IGNORECASE)
+    if not racine:
+        return None
+    vb = re.search(r"""(?<![\w:-])viewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)""", racine.group(0), re.IGNORECASE)
+    if vb:
+        return float(vb.group(1)), float(vb.group(2))
+    w = re.search(r"""(?<![\w:-])width\s*=\s*["']\s*([\d.]+)(?:px)?\s*["']""", racine.group(0), re.IGNORECASE)
+    h = re.search(r"""(?<![\w:-])height\s*=\s*["']\s*([\d.]+)(?:px)?\s*["']""", racine.group(0), re.IGNORECASE)
+    return (float(w.group(1)), float(h.group(1))) if w and h else None
+
+
+def format_image(octets, nom):
+    """(extension, largeur, hauteur) lus dans le fichier lui-même, pas dans son nom : une capture mal nommée passe,
+    un autre format ou un en-tête illisible ne passe pas. None sinon. Seul l'en-tête est lu : un fichier coupé plus loin
+    passe ici, et la page dit alors « Visuel introuvable »."""
+    try:
+        if octets[:8] == b"\x89PNG\r\n\x1a\n":
+            w, h = struct.unpack(">II", octets[16:24])
+            return "png", w, h
+        if octets[:6] in (b"GIF87a", b"GIF89a"):
+            w, h = struct.unpack("<HH", octets[6:10])
+            return "gif", w, h
+        if octets[:2] == b"\xff\xd8":
+            i = 2
+            while i + 9 < len(octets):
+                if octets[i] != 0xFF:
+                    i += 1
+                    continue
+                m = octets[i + 1]
+                if m == 0xFF:
+                    i += 1
+                elif m == 0xD8 or m == 0x01 or 0xD0 <= m <= 0xD7:
+                    i += 2
+                elif 0xC0 <= m <= 0xCF and m not in (0xC4, 0xC8, 0xCC):
+                    h, w = struct.unpack(">HH", octets[i + 5:i + 9])
+                    return "jpg", w, h
+                else:
+                    i += 2 + struct.unpack(">H", octets[i + 2:i + 4])[0]
+            return None
+        if octets[:4] == b"RIFF" and octets[8:12] == b"WEBP":
+            bloc = octets[12:16]
+            if bloc == b"VP8 ":
+                w, h = struct.unpack("<HH", octets[26:30])
+                return "webp", w & 0x3FFF, h & 0x3FFF
+            if bloc == b"VP8L" and len(octets) >= 25:
+                b = int.from_bytes(octets[21:25], "little")
+                return "webp", (b & 0x3FFF) + 1, ((b >> 14) & 0x3FFF) + 1
+            if bloc == b"VP8X" and len(octets) >= 30:
+                return "webp", int.from_bytes(octets[24:27], "little") + 1, int.from_bytes(octets[27:30], "little") + 1
+            return None
+        if nom.lower().endswith(".svg"):
+            d = dimensions_svg(octets)
+            return ("svg", d[0], d[1]) if d else None
+    except (struct.error, ValueError, IndexError):
+        return None
+    return None
+
+
+def preparer_images(data, racine, erreurs):
+    """Complète chaque visuel : w et h (toile d'un dessiné, taille lue dans le fichier sinon) réservent sa place avant
+    chargement. Un fichier est vérifié et src devient images/<empreinte>.<ext> : le nom neutre ne dit rien du contenu
+    (comparaison à l'aveugle), une image répétée n'est publiée qu'une fois et une nouvelle version change d'URL.
+    Rend {chemin publié: octets}."""
+    fichiers, reperes = {}, []
+    for ou, im in visuels_du_quiz(data):
+        if isinstance(im.get("html"), str):
+            im["w"], im["h"] = im.pop("largeur", VISUEL_TOILE[0]), im.pop("hauteur", VISUEL_TOILE[1])
+            continue
+        src = im.get("src")
+        if not isinstance(src, str) or not src.strip() or re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", src) or src.startswith("//"):
+            continue  # déjà signalé par check_visuel
+        try:
+            chemin = Path(src).expanduser()
+            if not chemin.is_absolute():
+                chemin = racine / chemin
+            octets = chemin.read_bytes()
+        except (OSError, RuntimeError, ValueError) as e:
+            erreurs.append(f"{ou} : image {src!r} illisible ({getattr(e, 'strerror', None) or e})")
+            continue
+        fmt = format_image(octets, chemin.name)
+        if not fmt or not all(math.isfinite(c) and 0 < c <= VISUEL_COTE_MAX for c in fmt[1:]):
+            erreurs.append(f"{ou} : image {src!r} : format non reconnu ou fichier abîmé (PNG, JPEG, GIF, WebP, ou SVG avec "
+                           "viewBox ; un HEIC se convertit d'abord, par exemple avec sips -s format jpeg)")
+            continue
+        if len(octets) > IMAGE_OCTETS_MAX:
+            erreurs.append(f"{ou} : image {src!r} trop lourde ({len(octets) / 1048576:.1f} Mo, "
+                           f"{IMAGE_OCTETS_MAX // 1048576} Mo au plus) : réduis-la d'abord")
+            continue
+        publie = f"images/{hashlib.sha256(octets).hexdigest()[:16]}.{fmt[0]}"
+        fichiers[publie] = octets
+        reperes.append((im, publie, fmt[1], fmt[2]))
+    total = sum(len(o) for o in fichiers.values())
+    if total > IMAGES_OCTETS_MAX:
+        erreurs.append(f"images : {total / 1048576:.1f} Mo au total, {IMAGES_OCTETS_MAX // 1048576} Mo au plus par publication")
+    if len(fichiers) > IMAGES_NOMBRE_MAX:
+        erreurs.append(f"images : {len(fichiers)} fichiers, {IMAGES_NOMBRE_MAX} au plus par publication")
+    for im, publie, w, h in reperes:
+        im["src"], im["w"], im["h"] = publie, w, h
+    return fichiers
 
 
 def check_implique(o, where, errors):
@@ -155,6 +424,14 @@ def check(data):
                 errors.append(f"{where} : fond trop long ({len(fond)} caractères, {FOND_MAX} au plus)")
             elif q.get("cadrage"):
                 errors.append(f"{where} : pas de fond sur le cadrage (Creuse n'y est pas proposé)")
+        if "image" in q:
+            errors.append(f"{where} : image s'appelle maintenant visuel : {{\"src\": \"capture.png\", \"alt\": \"ce qu'on y voit\"}}")
+        if "visuel" in q:
+            vs = q["visuel"] if isinstance(q["visuel"], list) else [q["visuel"]]
+            if not vs or len(vs) > VISUELS_PAR_QUESTION:
+                errors.append(f"{where} : visuel : un seul, ou une liste de 1 à {VISUELS_PAR_QUESTION}")
+            for v in vs:
+                check_visuel(v, where, errors)
         check_si(q, where, avant, bloquantes, errors)
         # « implique » vit sur une option de choix ou de multi : ni sur la question, ni sur une question texte ou de cadrage.
         if "implique" in q:
@@ -162,6 +439,10 @@ def check(data):
         if (q.get("cadrage") or kind == "texte") and isinstance(q.get("options"), list) and any(
                 isinstance(o, dict) and "implique" in o for o in q["options"]):
             errors.append(f"{where} : pas d'implique sur une question {'de cadrage' if q.get('cadrage') else 'texte'}")
+        if (q.get("cadrage") or kind == "texte") and isinstance(q.get("options"), list) and any(
+                isinstance(o, dict) and "visuel" in o for o in q["options"]):
+            errors.append(f"{where} : pas de visuel d'option sur une question {'de cadrage' if q.get('cadrage') else 'texte'} "
+                          "(mets-le sur la question)")
         if q.get("bloquant") is True and isinstance(qid, str):
             bloquantes.add(qid)
         if q.get("cadrage"):
@@ -190,6 +471,11 @@ def check(data):
                     errors.append(f"{where} : option {j} : objet {{\"k\": \"a\", \"texte\": ...}} attendu")
                 else:
                     check_implique(o, where, errors)
+                    if "visuel" in o:
+                        if isinstance(o["visuel"], list):
+                            errors.append(f"{where}, option {o.get('k', '?')} : un seul visuel par option")
+                        else:
+                            check_visuel(o["visuel"], f"{where}, option {o.get('k', '?')}", errors)
             opts = [o for o in opts if isinstance(o, dict)]
             keys = [o.get("k") for o in opts]
             if len(set(keys)) != len(keys) or any(not isinstance(k, str) or not k or k == "toi" for k in keys):
@@ -811,7 +1097,8 @@ def main():
         sys.exit(f"quizz : {src} n'est pas du JSON valide ({e})")
 
     errors = check(data)
-    raw = json.dumps(data, ensure_ascii=False)
+    fichiers = preparer_images(data, src.resolve().parent, errors)
+    raw = json.dumps(data, ensure_ascii=False, allow_nan=False)
     if "\u2014" in raw:
         errors.append("tiret cadratin (U+2014) dans le texte : le remplacer par un tiret simple ou reformuler")
     if errors:
@@ -835,6 +1122,14 @@ def main():
     page = page.replace("__DATA__", raw.replace("<", "\\u003c"), 1)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
+    # À côté de la page : une source de publication doit être dans le scratchpad ou le dossier de travail.
+    dest = {}
+    for publie, octets in fichiers.items():
+        cible = out.resolve().parent / publie
+        cible.parent.mkdir(parents=True, exist_ok=True)
+        if not cible.is_file() or cible.read_bytes() != octets:
+            cible.write_bytes(octets)
+        dest[publie] = str(cible)
     modes = " + ".join(m for m in [th["prefere"]] + [m for m in pal if m != th["prefere"]])
     suit = ", suit l'appareil" if len(pal) > 1 else ""
     repris = f" ; {' et '.join(th['repris'])} repris de la base {th['base']}" if th["repris"] else ""
@@ -842,7 +1137,16 @@ def main():
     for n in notes:
         print(n)
     nm = len(data.get("messages") or [])
-    print(f"{out} : {len(data['questions'])} questions, {nm} messages, tour {data['tour']}")
+    nv = len(visuels_du_quiz(data))
+    print(f"{out} : {len(data['questions'])} questions, {nm} messages, {nv} visuels, tour {data['tour']}")
+    if dest:
+        total = sum(len(o) for o in fichiers.values())
+        print(f"images : {len(dest)} fichier(s), {total / 1048576:.1f} Mo")
+        for ou, im in visuels_du_quiz(data):
+            if "src" in im and len(fichiers[im["src"]]) > IMAGE_LOURDE:
+                print(f"  {ou} : image lourde ({len(fichiers[im['src']]) / 1048576:.1f} Mo), la page chargera lentement : réduis-la si tu peux")
+        print("à publier dans files : " + json.dumps(dest, ensure_ascii=False))
+        print('capacité à déclarer : "sample": {"images": true}')
 
 
 if __name__ == "__main__":

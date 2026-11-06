@@ -27,6 +27,7 @@ Pour recevoir les nouvelles versions : `/plugin`, onglet Marketplaces, `quizz`, 
 
 ## Dans la page
 
+- Des visuels quand la question porte sur quelque chose qui se regarde : Claude dessine les variantes (maquette, palette, mise en page, schéma), rendues pour de vrai sur chaque option, ou y met une capture. Un clic agrandit, un autre referme, on compare, on choisit.
 - Ta réponse en un clic, une nuance si besoin, « À toi de voir » pour laisser Claude trancher, « J'y tiens / Peu importe ».
 - Un sommaire qui montre ce qui reste : un décompte des questions à trancher, les titres en entier, et un seul signal pour ce qui demande ton attention (bloquante, divergence).
 - Questions qui apparaissent selon tes réponses, questions bloquantes et mode « Juste les bloquantes ».
