@@ -39,7 +39,6 @@ VISUEL_ALT_MAX = 600
 VISUEL_LEGENDE_MAX = 240
 VISUEL_CODE_MAX = 20000  # html + css d'un visuel dessiné, en caractères : ça part dans la page et dans Creuse
 VISUEL_COTE_MAX = 100000  # côté lu dans un fichier : au-delà, le fichier est hostile ou abîmé
-VISUEL_TOILE = (640, 400)  # largeur et hauteur par défaut de la toile d'un visuel dessiné
 VISUEL_TOILE_BORNES = (80, 2400)
 # Limites de publication d'un artefact : 15 Mo par fichier, 64 Mo et 255 fichiers par publication (la page en est un).
 IMAGE_OCTETS_MAX = 15 * 1024 * 1024
@@ -162,9 +161,13 @@ def check_visuel(v, where, errors):
         return
     if len(code) + len(css) > VISUEL_CODE_MAX:
         errors.append(f"{where} : visuel trop long ({len(code) + len(css)} caractères de html et css, {VISUEL_CODE_MAX} au plus)")
+    # Pas de toile par défaut : une valeur imposée faisait tout dessiner en paysage. La forme suit ce qu'on montre.
     for k in ("largeur", "hauteur"):
-        if k in v and (isinstance(v[k], bool) or not isinstance(v[k], int)
-                       or not VISUEL_TOILE_BORNES[0] <= v[k] <= VISUEL_TOILE_BORNES[1]):
+        if k not in v:
+            errors.append(f"{where} : {k} manquante : choisis la toile selon ce que tu montres (écran de téléphone 390 x 844, "
+                          "carte carrée 480 x 480, page de bureau 1280 x 800, bouton seul 360 x 160...), pas une taille par habitude")
+        elif (isinstance(v[k], bool) or not isinstance(v[k], int)
+              or not VISUEL_TOILE_BORNES[0] <= v[k] <= VISUEL_TOILE_BORNES[1]):
             errors.append(f"{where} : {k} : nombre entier de {VISUEL_TOILE_BORNES[0]} à {VISUEL_TOILE_BORNES[1]} (px de la toile)")
     if "<![" in code or "<?" in code:
         errors.append(f"{where} : visuel : <![ et <? sont refusés (CDATA, instructions) : écris du HTML simple")
@@ -211,6 +214,29 @@ def dimensions_svg(octets):
     return (float(w.group(1)), float(h.group(1))) if w and h else None
 
 
+def orientation_jpeg(octets):
+    """Orientation EXIF d'un JPEG (1 à 8), 1 sans EXIF lisible."""
+    i = 2
+    while i + 4 < len(octets) and octets[i] == 0xFF:
+        m = octets[i + 1]
+        n = struct.unpack(">H", octets[i + 2:i + 4])[0]
+        if m == 0xDA:
+            break
+        if m == 0xE1 and octets[i + 4:i + 10] == b"Exif\x00\x00":
+            t = octets[i + 10:i + 2 + n]
+            if t[:2] not in (b"II", b"MM"):
+                return 1
+            e = "<" if t[:2] == b"II" else ">"
+            ifd = struct.unpack(e + "I", t[4:8])[0]
+            for j in range(struct.unpack(e + "H", t[ifd:ifd + 2])[0]):
+                a = ifd + 2 + 12 * j
+                if struct.unpack(e + "H", t[a:a + 2])[0] == 0x0112:
+                    return struct.unpack(e + "H", t[a + 8:a + 10])[0]
+            return 1
+        i += 2 + n
+    return 1
+
+
 def format_image(octets, nom):
     """(extension, largeur, hauteur) lus dans le fichier lui-même, pas dans son nom : une capture mal nommée passe,
     un autre format ou un en-tête illisible ne passe pas. None sinon. Seul l'en-tête est lu : un fichier coupé plus loin
@@ -223,6 +249,9 @@ def format_image(octets, nom):
             w, h = struct.unpack("<HH", octets[6:10])
             return "gif", w, h
         if octets[:2] == b"\xff\xd8":
+            # Une photo de téléphone est souvent stockée couchée, avec une orientation EXIF que le navigateur applique :
+            # sans l'échange, la place réservée aurait la forme inverse de l'image affichée.
+            tourne = orientation_jpeg(octets) in (5, 6, 7, 8)
             i = 2
             while i + 9 < len(octets):
                 if octets[i] != 0xFF:
@@ -235,7 +264,7 @@ def format_image(octets, nom):
                     i += 2
                 elif 0xC0 <= m <= 0xCF and m not in (0xC4, 0xC8, 0xCC):
                     h, w = struct.unpack(">HH", octets[i + 5:i + 9])
-                    return "jpg", w, h
+                    return ("jpg", h, w) if tourne else ("jpg", w, h)
                 else:
                     i += 2 + struct.unpack(">H", octets[i + 2:i + 4])[0]
             return None
@@ -266,7 +295,7 @@ def preparer_images(data, racine, erreurs):
     fichiers, reperes = {}, []
     for ou, im in visuels_du_quiz(data):
         if isinstance(im.get("html"), str):
-            im["w"], im["h"] = im.pop("largeur", VISUEL_TOILE[0]), im.pop("hauteur", VISUEL_TOILE[1])
+            im["w"], im["h"] = im.pop("largeur"), im.pop("hauteur")
             continue
         src = im.get("src")
         if not isinstance(src, str) or not src.strip() or re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", src) or src.startswith("//"):
@@ -375,6 +404,8 @@ def check(data):
     for key in ("nom", "titre", "eyebrow", "intro"):
         if key in data and not isinstance(data[key], str):
             errors.append(f"{key} : texte attendu")
+    if "equipe" in data and not isinstance(data["equipe"], bool):
+        errors.append("equipe : true (quiz à plusieurs) ou false ; sans le champ, le quiz est solo")
     if "theme" in data and not (isinstance(data["theme"], str) and data["theme"].strip()):
         errors.append("theme : nom d'un thème livré ou chemin vers un fichier de thème attendu")
     seul = data.get("seul")
@@ -1073,6 +1104,18 @@ def apercu(out, refs):
     print(f"{out} : aperçu de {len(refs)} thème(s) ({', '.join(t['nom'] for t in charges)})")
 
 
+def capacites(equipe, images):
+    """Ce que la page déclare à la publication. Solo : seul l'auteur écrit, rien sur qui regarde. À plusieurs : chaque
+    participant écrit son avis (avis/{self}) et la page lit les profils pour nommer les avis."""
+    regles = [{"path": c, "read": "view", "write": "owner"} for c in ("reponses", "messages", "recadrage", "bilan")]
+    if equipe:
+        regles += [{"path": "avis", "read": "view", "write": "owner"}, {"path": "avis/{self}", "write": "interact"}]
+    cap = {"db": {"rules": regles}, "comments": {}, "sample": {"images": True} if images else {}}
+    if equipe:
+        cap["user"] = {"scopes": ["profile"]}
+    return cap
+
+
 def main():
     args = sys.argv[1:]
     usage = ("usage : python3 build.py questions.json sortie/index.html [--theme <nom|chemin>]\n"
@@ -1139,6 +1182,10 @@ def main():
     nm = len(data.get("messages") or [])
     nv = len(visuels_du_quiz(data))
     print(f"{out} : {len(data['questions'])} questions, {nm} messages, {nv} visuels, tour {data['tour']}")
+    equipe = data.get("equipe") is True
+    if not equipe and any(isinstance(o, dict) and "implique" in o
+                          for q in data["questions"] for o in (q.get("options") or [])):
+        print("note : « implique » ne s'affiche qu'à plusieurs (equipe), il ne sert à rien dans ce quiz solo")
     if dest:
         total = sum(len(o) for o in fichiers.values())
         print(f"images : {len(dest)} fichier(s), {total / 1048576:.1f} Mo")
@@ -1146,7 +1193,10 @@ def main():
             if "src" in im and len(fichiers[im["src"]]) > IMAGE_LOURDE:
                 print(f"  {ou} : image lourde ({len(fichiers[im['src']]) / 1048576:.1f} Mo), la page chargera lentement : réduis-la si tu peux")
         print("à publier dans files : " + json.dumps(dest, ensure_ascii=False))
-        print('capacité à déclarer : "sample": {"images": true}')
+    print(f"{'à plusieurs' if equipe else 'solo'}, capabilities à passer telles quelles : "
+          + json.dumps(capacites(equipe, bool(dest)), ensure_ascii=False))
+    if nv:
+        print(f"visuels à vérifier : python3 {ICI / 'verifie.py'} {out}")
 
 
 if __name__ == "__main__":

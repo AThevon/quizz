@@ -206,6 +206,8 @@ h1 {
 }
 /* Visuels : une boîte dont la place est réservée avant le chargement (--ra : largeur / hauteur, --iw : largeur à ne pas
    dépasser, posés par visuelBoite), pour que les sauts dans la page tombent juste. Dedans, une image ou une scène dessinée. */
+/* --kh grandit la hauteur d'un visuel carré ou en hauteur (posé par visuelBoite) : à surface égale avec un paysage 16/10,
+   un écran de téléphone se voit aussi bien qu'une maquette de bureau, au lieu d'être tassé dans une boîte prévue pour du large. */
 .q-vis { --vis-h: min(38vh, 340px); display: grid; gap: 12px; margin: 14px 0 0; }
 .q-vis.plusieurs { --vis-h: min(26vh, 220px); grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .q-vis.avec-opts { --vis-h: min(18vh, 160px); }
@@ -213,7 +215,8 @@ h1 {
 .q-fig figcaption { margin-top: 6px; max-width: 40em; font-size: 14px; line-height: 1.45; color: var(--text-2); overflow-wrap: anywhere; }
 .vis-btn {
   position: relative; display: block; padding: 0; overflow: hidden; cursor: zoom-in;
-  width: min(100%, calc(var(--vis-h) * var(--ra)), calc(var(--iw) * 1px)); aspect-ratio: var(--ra);
+  --vh: min(calc(var(--vis-h) * var(--kh, 1)), 62vh);
+  width: min(100%, calc(var(--vh) * var(--ra)), calc(var(--iw) * 1px)); aspect-ratio: var(--ra);
   background: var(--field); border: 1px solid var(--line); border-radius: calc(var(--r) * 10 / 12);
   transition: border-color 140ms ease;
 }
@@ -291,11 +294,14 @@ h1 {
 .opts.vis-2 { --th-h: min(170px, 20vh); }
 .opts.vis-n { --th-h: min(96px, 11vh); }
 .opts.vis-nn { --th-h: min(68px, 8vh); }
-.opt-w { position: relative; min-width: 0; --th-w: calc(var(--th-h) * 1.6); --opx: calc(14px * var(--d)); --opy: calc(10px * var(--d)); }
-.opt-place { width: var(--th-w); height: var(--th-h); align-self: start; }
+/* Vignette à la forme du visuel, à surface égale avec un 16/10 (--kw, --kh posés par visuelBoite) : un carré reste carré,
+   un écran de téléphone reste en hauteur. La place réservée prend la plus large des vignettes de la question (--th-wq,
+   posée sur .opts), pour que les textes restent alignés. */
+.opt-w { position: relative; min-width: 0; --th-w: calc(var(--th-h) * var(--kw, 1.6)); --th-hv: calc(var(--th-h) * var(--kh, 1)); --opx: calc(14px * var(--d)); --opy: calc(10px * var(--d)); }
+.opt-place { width: calc(var(--th-h) * var(--th-wq, 1.6)); height: var(--th-hv); align-self: start; }
 /* Les étiquettes passent au-dessus du texte : à côté, un long prénom ne lui laisserait plus de place. */
 @media (min-width: 900px) {
-  .opt.has-vis { grid-template-columns: 30px var(--th-w) minmax(0, 1fr); grid-template-rows: 1fr auto auto 1fr; }
+  .opt.has-vis { grid-template-columns: 30px calc(var(--th-h) * var(--th-wq, 1.6)) minmax(0, 1fr); grid-template-rows: 1fr auto auto 1fr; }
   .opt.has-vis .key { grid-column: 1; grid-row: 1 / -1; }
   .opt.has-vis .opt-place { grid-column: 2; grid-row: 1 / -1; }
   .opt.has-vis .opt-tags { grid-column: 3; grid-row: 2; justify-self: start; margin-bottom: 4px; }
@@ -303,7 +309,7 @@ h1 {
 }
 .opt-vis {
   position: absolute; top: calc(1.5px + var(--opy)); left: calc(1.5px + var(--opx) + 30px + 14px);
-  --vis-h: var(--th-h); width: var(--th-w); height: var(--th-h); aspect-ratio: auto;
+  --vis-h: var(--th-hv); --vh: var(--th-hv); width: var(--th-w); height: var(--th-hv); aspect-ratio: auto;
 }
 .has-choice .opt.has-vis[aria-checked="false"] { opacity: 1; }
 .has-choice .opt.has-vis[aria-checked="false"] .otext { color: var(--text-2); }
@@ -883,9 +889,10 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   .q-vis.avec-opts { --vis-h: min(16vh, 130px); }
   .opt-w { --opx: calc(12px * var(--d)); --th-w: auto; }
   .opt.has-vis { grid-template-columns: 28px minmax(0, 1fr); }
-  .opt.has-vis, .opt.has-vis[aria-checked="true"] { padding-top: calc(var(--opy) + var(--th-h) + 10px); }
+  .opt.has-vis, .opt.has-vis[aria-checked="true"] { padding-top: calc(var(--opy) + var(--th-hv) + 10px); }
   .opt-place { display: none; }
-  .opt-vis { left: calc(1.5px + var(--opx)); width: calc(100% - 3px - 2 * var(--opx)); }
+  /* À la forme du visuel, pas en bandeau : un écran en hauteur n'est pas noyé dans deux bandes vides. */
+  .opt-vis { left: calc(1.5px + var(--opx)); width: min(calc(100% - 3px - 2 * var(--opx)), calc(var(--th-hv) * var(--ra))); }
   .fin { margin-top: calc(72px * var(--d)); scroll-margin-top: 80px; }
   .fin-cta .btn-fin { width: 100%; }
 }
@@ -919,7 +926,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 .zoom-n { flex: none; margin-left: auto; font-family: var(--mono); font-size: 13px; color: var(--muted); }
 .zoom-vue { --vis-h: calc(100vh - 230px); display: grid; justify-items: center; max-height: var(--vis-h); }
 @supports (height: 100dvh) { .zoom-vue { --vis-h: calc(100dvh - 230px); } }
-.zoom-vue .vis-btn { cursor: zoom-out; }
+.zoom-vue .vis-btn { cursor: zoom-out; --kh: 1; --vh: var(--vis-h); }
 .zoom-vue .vis-btn:disabled { cursor: default; }
 .zoom-vue.reel { justify-items: start; overflow: auto; }
 .zoom-vue.reel .vis-btn { width: calc(var(--iw) * 1px); max-width: none; }
@@ -1153,7 +1160,8 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 //   type: "choix" | "multi" | "texte", cadrage?, delegable?, options?: [{ k, texte, reco?, implique?: { poids, texte }, visuel? }],
 //   si?: {id: clé | [clés]}, bloquant?, prediction?: clé | [clés] }],
 //   messages?: [{ id, pour, ou?, pourquoi?, format: "slack" | "markdown" | "texte", texte, lien? }], messages_apres?,
-//   recadre?: { le, resume }, precedent?: { tour, resume }, contexte?: texte de fond pour Creuse } ; chaque question peut aussi avoir fond?.
+//   recadre?: { le, resume }, precedent?: { tour, resume }, contexte?: texte de fond pour Creuse, equipe?: true (à plusieurs ;
+//   sinon solo) } ; chaque question peut aussi avoir fond?.
 // visuel (posé par build.py) : { alt, legende?, w, h } et soit html + css? (dessiné, rendu sur une toile w x h), soit src (fichier publié).
 // Enregistrement : document reponses/<tour> = { reponses: {id: clé | [clés] | texte}, notes: {id: texte}, autre, termine, finiLe?, majLe, tour,
 //   messages?: {id: {texte?, base?, statut?, raison?}}, recadrages?: [{ le, a, raisons, texte, portee, annule? }],
@@ -1179,6 +1187,9 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   try { if ("scrollRestoration" in history) history.scrollRestoration = "manual"; } catch (err) {}
   var QUIZ = JSON.parse(document.getElementById("quiz-data").textContent);
   var TOUR = QUIZ.tour || "t1";
+  // Solo par défaut : sans « equipe », la page ne demande pas qui regarde et n'écoute pas d'avis ; tout ce qui sert à
+  // plusieurs (divergences, arbitrages, « Appliquer ») ne s'allume qu'avec un avis, donc reste éteint.
+  var EQUIPE = QUIZ.equipe === true;
   // Ancien repère de la réponse à l'aveugle (remplacée par la relecture) : plus lu, on le retire.
   try { localStorage.removeItem("quizz-devoile-" + TOUR); } catch (err) {}
   var LETTERS = "abcdefghi";
@@ -2102,9 +2113,18 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     var b = h("button", { type: "button", class: "vis-btn " + cls, "aria-label": nom, title: "Agrandir", onclick: function () { zoomOuvrir(q, q.vues.indexOf(x)); } });
     remplirBoite(b, x.v);
     // Vignette : un ratio extrême ferait un filet, le visuel reste entier dedans et l'agrandissement garde le vrai ratio.
-    b.style.setProperty("--ra", Math.min(4, Math.max(.4, x.v.w / x.v.h)).toFixed(4));
+    var ra = Math.min(4, Math.max(.4, x.v.w / x.v.h)), f = formeVignette(ra);
+    b.style.setProperty("--ra", ra.toFixed(4));
+    b.style.setProperty("--kh", f.kh.toFixed(4));
     if (!x.v.ko) b.appendChild(h("span", { class: "vis-ic" }, iconeZoom()));
     return b;
+  }
+  // À surface égale avec un 16/10 : largeur et hauteur en multiples de la hauteur de base. Un paysage plus large que 16/10
+  // garde sa hauteur (la largeur le limite déjà) ; un carré ou un portrait grandit en hauteur.
+  // Une option (max 1.5) grandit moins qu'un visuel de question (max 2) : la question doit tenir dans un écran.
+  function formeVignette(ra, max) {
+    var kh = Math.min(max || 2, Math.max(1, Math.sqrt(1.6 / ra)));
+    return { kh: kh, kw: Math.min(2.6, ra * kh) };
   }
   function visuelsQuestion(q) {
     if (!q.visuels.length) return null;
@@ -2147,6 +2167,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       q.box = h("div", { class: "opts" + (nVis ? nVis > 5 ? " vis-nn" : nVis > 3 ? " vis-n" : nVis < 3 && !q.visuels.length ? " vis-2" : "" : ""), role: multi ? "group" : "radiogroup", "aria-labelledby": titleId });
       // Chez un participant, une étiquette marque l'option choisie par le propriétaire (avisPaint).
       q.avisTags = [];
+      var wq = 0;
       q.btns = q.opts.map(function (o, j) {
         var at = h("span", { class: "avis-tag", hidden: true });
         q.avisTags.push(at);
@@ -2158,10 +2179,14 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
           h("span", { class: "opt-tags", hidden: !o.reco }, o.reco ? h("span", { class: "reco-tag", text: "Ma reco" }) : null, at));
         if (o.visuel) {
           var vue = q.vues.filter(function (x) { return x.o === o; })[0];
-          q.box.appendChild(h("div", { class: "opt-w" }, b, visuelBoite(q, vue, "opt-vis", "Agrandir le visuel de l'option " + LETTERS[j] + " : " + o.visuel.alt)));
+          var fo = formeVignette(Math.min(4, Math.max(.4, o.visuel.w / o.visuel.h)), 1.5);
+          wq = Math.max(wq, fo.kw);
+          q.box.appendChild(h("div", { class: "opt-w", style: "--kw:" + fo.kw.toFixed(4) + ";--kh:" + fo.kh.toFixed(4) }, b,
+            visuelBoite(q, vue, "opt-vis", "Agrandir le visuel de l'option " + LETTERS[j] + " : " + o.visuel.alt)));
         } else q.box.appendChild(b);
         return b;
       });
+      if (wq) q.box.style.setProperty("--th-wq", wq.toFixed(4));
       q.art.appendChild(q.box);
       // À plusieurs : l'état de la question, la réponse du propriétaire chez un participant, les avis des autres.
       q.avisEl = q.art.appendChild(avisQ(q));
@@ -3182,7 +3207,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   // question et dans le bilan. Aucun nom n'est stocké : user.profiles() les donne au rendu.
   var MOI = { user: null, id: null, invite: false, ecrit: null, nom: "", proprio: "" };
   var avis = [], avisNoms = {}, autresTours = {};
-  var roleReady = (window.claude && window.claude.use
+  var roleReady = (EQUIPE && window.claude && window.claude.use
     ? Promise.resolve().then(function () { return window.claude.use("user"); }) : Promise.resolve(null))
     .then(function (u) {
       if (!u) return;
@@ -3261,6 +3286,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     return lireAvis(doc.id, t);
   }
   function ecouterAvis(db) {
+    if (!EQUIPE) return;
     try {
       db.collection("avis").onSnapshot(function (snap) {
         avis = snap.docs.map(avisValide).filter(Boolean);
