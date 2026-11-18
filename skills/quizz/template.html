@@ -503,9 +503,9 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; b
    le calme. La transition ne joue que sur une fin vue en direct (classe calme, posée par le geste). */
 .cr.fixe { border-left-color: var(--line); }
 .cr.calme { transition: border-left-color 400ms ease; }
-.cr h4 { margin: 0 0 4px; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-.cr-lead { margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
-.cr-hist { margin-top: 14px; }
+.cr-lead { margin: 0 0 12px; font-size: 14px; line-height: 1.45; color: var(--muted); }
+.cr-lead[hidden] { display: none; }
+.cr-hist { margin-bottom: 16px; }
 .cr-hist > * + * { margin-top: 14px; }
 .cr-old > .cr-e { margin-top: 12px; }
 .cr-old summary { cursor: pointer; width: fit-content; font-size: 14px; color: var(--text-2); }
@@ -522,7 +522,6 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; b
   font-size: 13px; color: var(--text-2); transition: border-color 140ms ease, color 140ms ease;
 }
 .cr-copier:hover { border-color: var(--text-2); color: var(--text); }
-.cr-zone { margin-top: 16px; }
 
 /* ---------- Ce que Claude écrit ---------- */
 /* Mise en page des réponses : paragraphes, puces à marqueur fin, gras, code. L'attente dit ce que Claude fait, avec un
@@ -550,16 +549,20 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; b
   .cl-pied { animation: cl-pose 220ms var(--ease-encre) both; }
   @keyframes cl-pose { from { opacity: 0; transform: translateY(6px); } }
 }
-.cr-asks { display: flex; flex-direction: column; gap: 6px; }
+.cr-asks { display: flex; flex-wrap: wrap; gap: 6px; }
 .cr-ask {
-  width: 100%; text-align: left; background: var(--bg); border: 1.5px solid var(--control); border-radius: calc(var(--r) * 10 / 12);
-  padding: 7px 12px; font-size: 15px; color: var(--text);
+  background: var(--bg); border: 1.5px solid var(--control); border-radius: calc(var(--r) * 10 / 12);
+  padding: 5px 12px; font-size: 14px; color: var(--text);
   transition: border-color 140ms ease;
 }
 .cr-ask:hover { border-color: var(--text-2); }
 .cr-ask:disabled { color: var(--muted); border-color: var(--line); cursor: default; }
-.cr-zone .field-l { margin-top: 14px; }
+/* Ta question et Demander sur la même ligne, sous les demandes rapides. */
+.cr-row { display: flex; align-items: flex-end; gap: 8px; margin-top: 10px; }
+.cr-row textarea { flex: 1; min-width: 0; min-height: 40px; padding: 7px 12px; font-size: 15px; }
+.cr-row .btn-copy { flex: none; min-height: 40px; }
 .cr .msg-actions { margin-top: 10px; }
+.cr .msg-actions:has(> .btn-reset[hidden]):has(> .msg-state:empty) { display: none; }
 
 /* ---------- À plusieurs ---------- */
 /* Chez un participant, ce qui ne regarde que le propriétaire disparaît (recadrage, messages, bilan de Claude). */
@@ -1346,12 +1349,12 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   var CREUSE_MAX = 5, CREUSE_R = 2000, CREUSE_TOTAL = 60000;
   var DEMANDES = {
     options: [
-      { l: "Explique-moi les options", p: "Explique-moi chaque option en une ou deux phrases : ce qu'elle implique concrètement, et quand c'est le bon choix." },
+      { l: "Explique les options", p: "Explique-moi chaque option en une ou deux phrases : ce qu'elle implique concrètement, et quand c'est le bon choix." },
       { l: "Quel risque concret ?", p: "Quel est le risque concret de chaque option (ou de ma réponse actuelle si j'en ai une) ? Donne un exemple de ce qui pourrait mal tourner." },
-      { l: "Propose une autre option", p: "Propose une autre option que celles listées, avec ce qu'elle change, ou dis franchement s'il n'y en a pas de sérieuse." }
+      { l: "Une autre option ?", p: "Propose une autre option que celles listées, avec ce qu'elle change, ou dis franchement s'il n'y en a pas de sérieuse." }
     ],
     texte: [
-      { l: "Explique-moi ce qu'on attend", p: "Explique-moi ce que cette question cherche à trancher et ce qu'une bonne réponse doit contenir." },
+      { l: "Ce qu'on attend ici", p: "Explique-moi ce que cette question cherche à trancher et ce qu'une bonne réponse doit contenir." },
       { l: "Quel risque concret ?", p: "Quel est le risque concret si je réponds mal ou trop vite ici ? Donne un exemple." },
       { l: "Propose une réponse", p: "Propose une réponse plausible, en disant sur quelles hypothèses elle repose." }
     ]
@@ -1751,7 +1754,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     c.asks = (q.type === "texte" ? DEMANDES.texte : DEMANDES.options).map(function (d) {
       return h("button", { type: "button", class: "cr-ask", onclick: function (e) { creuser(q, d.l, d.p, e.currentTarget); } }, d.l);
     });
-    c.ta = h("textarea", { id: pid + "-t", rows: "1", placeholder: "Ta question sur ce point." });
+    c.ta = h("textarea", { id: pid + "-t", rows: "1", "aria-label": "Ta question", placeholder: "Ta question" });
     c.go = h("button", { type: "button", class: "btn-copy", onclick: function () {
       var t = c.ta.value.trim();
       if (t) creuser(q, coupe(t, 500), t, c.ta); else c.ta.focus();
@@ -1760,9 +1763,9 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     c.etat = h("span", { class: "msg-state", role: "status", "aria-live": "polite" });
     c.zone = h("div", { class: "cr-zone" },
       h("div", { class: "cr-asks", role: "group", "aria-label": "Demandes rapides" }, c.asks[0], c.asks[1], c.asks[2]),
-      h("label", { class: "field-l", for: pid + "-t" }, "Autre chose ?", h("small", { text: "ta propre question" })), c.ta);
+      h("div", { class: "cr-row" }, c.ta, c.go));
     c.panel = h("section", { class: "cr", id: pid, tabindex: "-1", "aria-label": "Creuser " + q.id + " avec Claude", hidden: true },
-      h("h4", { text: "Creuser avec Claude" }), c.lead, c.hist, c.zone, h("div", { class: "msg-actions" }, c.go, c.stop, c.etat));
+      c.lead, c.hist, c.zone, h("div", { class: "msg-actions" }, c.stop, c.etat));
     c.ta.addEventListener("input", function () { fit(c.ta); });
     c.ta.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); c.go.click(); }
@@ -1810,8 +1813,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     // Coupée en cours de route : le panneau ouvert garde son bouton (et son message) jusqu'à ce qu'on le ferme.
     c.btn.hidden = !sampleOk && !n && c.panel.hidden;
     c.btnL.textContent = n ? "Creuse (" + n + ")" : "Creuse";
-    c.lead.textContent = sampleOk ? "Claude répond à partir de ce que dit le quiz" + (q.vues.length ? (sampleImages || !q.vues.some(function (x) { return x.v.src != null; }) ? ", visuels compris" : ", et de la description des visuels") : "") + ", sans accès au code. La demande passe par ton compte Claude."
-      : n ? "Ce que tu as déjà creusé ici." : "";
+    c.lead.textContent = !sampleOk && n ? "Ce que tu as déjà creusé ici." : "";
     c.lead.hidden = !c.lead.textContent;
     c.zone.hidden = c.go.hidden = !sampleOk;
     c.asks.forEach(function (b) { b.disabled = c.busy; });
