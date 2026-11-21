@@ -574,6 +574,8 @@ def check(data):
 ICI = Path(__file__).resolve().parent
 THEMES = ICI / "themes"
 THEME_PERSO = Path("~/.claude/quizz-theme.json").expanduser()
+# Posé après la première astuce sur les thèmes : elle ne revient plus.
+ASTUCE_THEME = Path("~/.claude/.quizz-astuce-theme").expanduser()
 MODES = ("sombre", "clair")
 
 # Rôle du thème -> variable CSS du gabarit, dans l'ordre où le gabarit les déclarait.
@@ -1460,6 +1462,13 @@ def main():
     nm = len(data.get("messages") or [])
     nv = len(visuels_du_quiz(data))
     print(f"{out} : {len(data['questions'])} questions, {nm} messages, {nv} visuels, tour {data['tour']}")
+    if pourquoi == "par défaut" and not ASTUCE_THEME.exists():
+        print("astuce : tu peux changer l'apparence de tes quiz avec /quizz thème")
+        try:
+            ASTUCE_THEME.parent.mkdir(parents=True, exist_ok=True)
+            ASTUCE_THEME.touch()
+        except OSError:
+            pass
     equipe = data.get("equipe") is True
     if not equipe and any(isinstance(o, dict) and "implique" in o
                           for q in data["questions"] for o in (q.get("options") or [])):

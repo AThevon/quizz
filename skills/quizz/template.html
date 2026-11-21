@@ -1159,6 +1159,8 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 .keys-grid dl { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 14px; align-items: center; }
 .keys-grid dt { display: flex; gap: 4px; justify-content: flex-end; }
 .keys-grid dd { margin: 0; font-size: 15px; color: var(--text); }
+.keys-foot { margin: 24px 0 0; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14px; color: var(--text-2); }
+.keys-foot kbd { font-size: 13px; }
 .keys-grid kbd { font-size: 13px; min-width: 26px; padding: 2px 7px; }
 @media (max-width: 560px) { .keys-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: no-preference) {
@@ -1339,6 +1341,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
         </dl>
       </section>
     </div>
+    <p class="keys-foot" data-proprio>Changer l'apparence de tes quiz : dans Claude Code, tape <kbd>/quizz thème</kbd>.</p>
   </div>
 </div>
 

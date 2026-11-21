@@ -85,7 +85,7 @@ L'utilisateur lance `/quizz` quand il veut répondre aux décisions en attente s
 
 ## 3. Donner le lien
 
-Réponse courte : le lien, le nombre de questions (dont bloquantes), le temps estimé, et « clique « Envoyer mes réponses » en bas quand c'est rempli, ça me relance ; si ça part de travers, « Recadrer » (touche x) ; pour creuser une question, touche q ». Rien d'autre. La relance n'arrive que tant que cette session tourne : sinon il dira « c'est envoyé » dans le terminal.
+Réponse courte : le lien, le nombre de questions (dont bloquantes), le temps estimé, et « clique « Envoyer mes réponses » en bas quand c'est rempli, ça me relance ; si ça part de travers, « Recadrer » (touche x) ; pour creuser une question, touche q ». Rien d'autre. La relance n'arrive que tant que cette session tourne : sinon il dira « c'est envoyé » dans le terminal. Si build.py a imprimé une ligne `astuce :`, ajoute-la à la fin, en une ligne (elle ne sort qu'une fois par personne).
 
 ## 4. Relire et appliquer
 
