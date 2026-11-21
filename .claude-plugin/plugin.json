@@ -1,9 +1,20 @@
 {
   "name": "quizz",
   "description": "Les questions que Claude te pose deviennent un quiz cliquable (recos, conséquences, nuances), puis Claude applique et te dit ce qu'il a fait.",
-  "version": "1.7.0",
-  "author": { "name": "AThevon" },
+  "version": "1.7.1",
+  "author": {
+    "name": "AThevon"
+  },
   "repository": "https://github.com/AThevon/quizz",
   "license": "MIT",
-  "keywords": ["claude-code", "skills", "decisions", "quiz", "artifacts"]
+  "keywords": [
+    "claude-code",
+    "claude-code-plugin",
+    "skills",
+    "decisions",
+    "quiz",
+    "artifacts",
+    "themes"
+  ],
+  "homepage": "https://github.com/AThevon/quizz#readme"
 }
