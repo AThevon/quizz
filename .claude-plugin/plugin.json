@@ -1,7 +1,7 @@
 {
   "name": "quizz",
-  "description": "Les questions que Claude te pose deviennent un quiz cliquable (recos, conséquences, nuances), puis Claude applique et te dit ce qu'il a fait.",
-  "version": "1.7.1",
+  "description": "The questions Claude asks you become a clickable quiz (picks, consequences, notes), then Claude applies them and tells you what it did.",
+  "version": "1.8.0",
   "author": {
     "name": "AThevon"
   },

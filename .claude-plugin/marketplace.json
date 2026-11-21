@@ -2,14 +2,14 @@
   "name": "quizz",
   "owner": { "name": "AThevon" },
   "metadata": {
-    "description": "/quizz pour Claude Code : les questions en attente deviennent un quiz cliquable, Claude applique tes réponses.",
-    "version": "1.7.1"
+    "description": "/quizz for Claude Code: pending questions become a clickable quiz, Claude applies your answers.",
+    "version": "1.8.0"
   },
   "plugins": [
     {
       "name": "quizz",
       "source": "./",
-      "description": "Les questions que Claude te pose deviennent un quiz cliquable (recos, conséquences, nuances), puis Claude applique et te dit ce qu'il a fait."
+      "description": "The questions Claude asks you become a clickable quiz (picks, consequences, notes), then Claude applies them and tells you what it did."
     }
   ]
 }
