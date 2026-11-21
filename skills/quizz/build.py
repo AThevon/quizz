@@ -603,8 +603,24 @@ GENERIQUES = {"sans-serif", "serif", "monospace", "system-ui", "ui-sans-serif", 
               "-apple-system", "Impact", "Arial", "Menlo", "Consolas", "Roboto"}
 FAMILLE = re.compile(r"^(?=.{1,60}$)[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$")  # mots séparés d'un seul espace
 DENSITES = {"aere": "1.2", "aéré": "1.2", "normal": "1", "compact": ".85"}
-CHAMPS = {"nom", "description", "base", "prefere", "sombre", "clair", "polices", "arrondi", "densite"}
+CHAMPS = {"nom", "description", "base", "prefere", "sombre", "clair", "polices", "arrondi", "densite", "matiere"}
 HEX = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
+HEXA = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+
+# Matière (facultative) : ciel, verre, bord, ombres, formes et orbe, posés par le gabarit derrière data-matiere. Sans
+# champ « matiere », rien de tout ça n'est écrit dans la page : les thèmes qui n'en ont pas rendent comme avant.
+# Rôles de couleur propres à la matière, dans les modes : variable CSS, et si la valeur peut être translucide (#rrggbbaa).
+ROLES_MATIERE = {
+    "teinte": ("--teinte", False), "sur-teinte": ("--sur-teinte", False),
+    "verre": ("--verre", True), "verre-fort": ("--verre-fort", True),
+    "remplissage": ("--remplissage", True), "remplissage-survol": ("--remplissage-survol", True),
+    "bord": ("--bord", True), "ombre": ("--ombre", False),
+}
+CHAMPS_MATIERE = {"ciel", "flou", "saturation", "bord", "formes", "orbe", "arrondis"}
+ARRONDIS = {"panneau": 30, "carte": 22, "champ": 16, "bouton": 999}
+MATIERE_DEF = {"ciel": {"clair": 55, "sombre": 34}, "flou": 16, "saturation": 140, "bord": 2, "formes": False,
+               "orbe": False, "arrondis": dict(ARRONDIS)}
+OMBRES = {"clair": (.07, .10, .16), "sombre": (.22, .30, .42)}  # repos, verre, surimpression
 
 
 def rgb(c):
@@ -612,6 +628,21 @@ def rgb(c):
     if len(c) == 3:
         c = "".join(x * 2 for x in c)
     return tuple(int(c[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+
+def alpha(c):
+    """Opacité d'une couleur #rrggbbaa (1 pour #rgb et #rrggbb)."""
+    c = c.lstrip("#")
+    return int(c[6:8], 16) / 255 if len(c) == 8 else 1.0
+
+
+def avec_alpha(c, a):
+    return hexa(rgb(c)) + f"{round(max(0, min(1, a)) * 255):02x}"
+
+
+def sur(dessus, dessous):
+    """Couleur vue d'un calque translucide (#rrggbbaa) posé sur un fond opaque."""
+    return mix(dessous, hexa(rgb(dessus)), alpha(dessus))
 
 
 def hexa(t):
@@ -777,7 +808,7 @@ def noter(notes, nom, mode, p, role, avant, apres, contraintes, verbe="corrigé 
     if pire in PROCHES:
         quoi = f"trop proche {PROCHES[pire]}"
     else:
-        quoi = ("trop pâle sur " if classe(p[pire]) == "clair" else "trop sombre sur ") + NOMS_FOND[pire]
+        quoi = ("trop pâle sur " if classe(p[pire]) == "clair" else "trop sombre sur ") + NOMS_FOND.get(pire, pire)
     note = f"thème {nom}, mode {mode} : {role} {avant} {quoi}, {verbe} {apres}"
     q = apres_p or p
     f, m = min(contraintes, key=lambda c: rapport(c, apres, q))
@@ -786,14 +817,16 @@ def noter(notes, nom, mode, p, role, avant, apres, contraintes, verbe="corrigé 
     notes.append(note)
 
 
-def encres_lisibles(p, nom, mode, notes):
+def encres_lisibles(p, nom, mode, notes, q=None, extra=()):
     """Encres d'état et sur-encre, les lettres posées sur elles (touches cochées, pastilles, compteurs du bilan).
     Chaque encre tient 4.5 sur le fond et les surfaces (tampons, tags en petit texte, rail) et 4.5 face à sur-encre ;
     sur-encre tient aussi 4.5 face à texte-2 (le compteur « Vide » du bilan). La sur-encre du thème est gardée si
     les encres peuvent s'écarter d'elle ; sinon le bord (fond, texte, noir, blanc) qui tient en touchant le moins
-    d'encres ; sinon le meilleur compromis."""
+    d'encres ; sinon le meilleur compromis. q, extra : avec une matière, les fonds nommés (verre, remplissage) en plus."""
+    q = q or p
+
     def contraintes(s):
-        return [(p["fond"], 4.5), (p["surface"], 4.5), (p["surface-2"], 4.5), (s, 4.5)]
+        return [(p["fond"], 4.5), (p["surface"], 4.5), (p["surface-2"], 4.5), (s, 4.5)] + [(q[f], 4.5) for f in extra]
 
     def essai(s):
         enc = {e: corriger(p[e], contraintes(s)) for e in ENCRES}
@@ -809,23 +842,194 @@ def encres_lisibles(p, nom, mode, notes):
     if s != orig:
         noter(notes, nom, mode, p, "sur-encre", orig, s, [("texte-2", 4.5)] + [(e, 4.5) for e in ENCRES],
               verbe="remplacé par", apres_p=dict(p, **enc))
-    p["sur-encre"] = s
+    p["sur-encre"] = q["sur-encre"] = s
     for e in ENCRES:
         if enc[e] != p[e]:
-            noter(notes, nom, mode, p, e, p[e], enc[e], [("fond", 4.5), ("surface", 4.5), ("surface-2", 4.5),
-                                                          ("sur-encre", 4.5)])
-            p[e] = enc[e]
+            noter(notes, nom, mode, q, e, p[e], enc[e], [("fond", 4.5), ("surface", 4.5), ("surface-2", 4.5),
+                                                          ("sur-encre", 4.5)] + [(f, 4.5) for f in extra])
+            p[e] = q[e] = enc[e]
 
 
-def lisible(p, nom, mode, notes):
+def lisible(p, nom, mode, notes, mat=None):
+    """Avec une matière, le texte se lit aussi sur ce qui est derrière lui. Le gabarit pose tout sur du verre (rail,
+    en-tête, questions, bilan) sauf les titres de groupe, en texte : lui seul se juge aussi sur le ciel et les formes
+    nus ; tous se jugent sur le verre et le remplissage posés sur eux, et le texte sur les teintes douces (puces)."""
+    q, ex, panneaux = p, {}, []
+    if mat:
+        d = derives_matiere(p, mat)
+        dessous, pan = fonds_matiere(p, mat, d)
+        douces = {"la teinte douce": d["teinte-douce"], "la teinte moyenne": d["teinte-moyenne"]}
+        douces.update({f"l'encre {e} douce": d[f"{e}-doux"] for e in ENCRES})
+        q = dict(p, **dessous, **pan, **douces)
+        panneaux = list(pan)
+        ex = {"texte": list(dessous) + panneaux + list(douces), "texte-2": panneaux, "discret": panneaux,
+              "accent": panneaux, "controle": panneaux, "focus": panneaux}
     for role, fonds, mini in EXIGENCES:
-        avant = p[role]
-        apres = corriger(avant, [(p[f], mini) for f in fonds])
+        fonds = tuple(fonds) + tuple(ex.get(role, ()))
+        avant = q[role]
+        apres = corriger(avant, [(q[f], mini) for f in fonds])
         if apres != avant:
-            noter(notes, nom, mode, p, role, avant, apres, [(f, mini) for f in fonds])
-            p[role] = apres
-    encres_lisibles(p, nom, mode, notes)
+            noter(notes, nom, mode, q, role, avant, apres, [(f, mini) for f in fonds])
+            p[role] = q[role] = apres
+    if mat:
+        avant = p["sur-teinte"]
+        apres = corriger(avant, [(p["teinte"], 4.5)])
+        if apres != avant:
+            noter(notes, nom, mode, p, "sur-teinte", avant, apres, [("teinte", 4.5)])
+            p["sur-teinte"] = apres
+    encres_lisibles(p, nom, mode, notes, q, panneaux)
     return p
+
+
+# ---------- Matière ----------
+
+def lire_matiere(t, b):
+    """Matière du thème : celle de la base, retouchée champ par champ ; "matiere": null la retire."""
+    if "matiere" in t and t["matiere"] is None:
+        return None
+    m = t.get("matiere")
+    if m is None:
+        return b.get("matiere")
+    out = json.loads(json.dumps(b.get("matiere") or MATIERE_DEF))
+    for k, v in m.items():
+        if k == "ciel":
+            out["ciel"] = dict(out["ciel"], **v) if isinstance(v, dict) else {"clair": v, "sombre": v}
+        elif k == "arrondis":
+            out["arrondis"] = dict(out["arrondis"], **v)
+        elif k == "formes":
+            out["formes"] = ({"seconde": None} if v is True else dict(v) if isinstance(v, dict) else False)
+        else:
+            out[k] = v
+    return out
+
+
+def verifier_matiere(m):
+    if m is None:
+        return []
+    if not isinstance(m, dict):
+        return ["matiere : objet {\"ciel\": 55, \"flou\": 16, ...} attendu, ou null pour retirer celle de la base"]
+    err = []
+
+    def nombre(v, lo, hi):
+        return not isinstance(v, bool) and isinstance(v, (int, float)) and lo <= v <= hi
+    inconnus = set(m) - CHAMPS_MATIERE
+    if inconnus:
+        err.append(f"matiere : champ(s) inconnu(s) : {', '.join(sorted(inconnus))} "
+                   f"(attendus : {', '.join(sorted(CHAMPS_MATIERE))})")
+    c = m.get("ciel")
+    if c is not None and not (nombre(c, 0, 100) or (isinstance(c, dict) and c and set(c) <= set(MODES)
+                                                    and all(nombre(x, 0, 100) for x in c.values()))):
+        err.append("matiere.ciel : part de la teinte en haut de page, de 0 à 100 (%), ou {\"clair\": 55, \"sombre\": 34}")
+    for k, lo, hi, quoi in (("flou", 0, 40, "px"), ("saturation", 100, 200, "%"), ("bord", 0, 4, "px")):
+        if k in m and not nombre(m[k], lo, hi):
+            err.append(f"matiere.{k} : nombre de {lo} à {hi} ({quoi})")
+    f = m.get("formes")
+    if f is not None and not isinstance(f, bool):
+        if not (isinstance(f, dict) and set(f) <= {"seconde"} and (f.get("seconde") is None or (
+                isinstance(f["seconde"], str) and HEX.match(f["seconde"])))):
+            err.append("matiere.formes : true, false, ou {\"seconde\": \"#rrggbb\"} (couleur de la deuxième forme)")
+    if "orbe" in m and not isinstance(m["orbe"], bool):
+        err.append("matiere.orbe : true ou false")
+    a = m.get("arrondis")
+    if a is not None:
+        if not isinstance(a, dict):
+            err.append("matiere.arrondis : objet {\"panneau\": 30, \"carte\": 22, \"champ\": 16, \"bouton\": 999} attendu")
+        else:
+            for k, v in a.items():
+                if k not in ARRONDIS:
+                    err.append(f"matiere.arrondis.{k} : niveau inconnu ({', '.join(ARRONDIS)})")
+                elif not nombre(v, 0, 999 if k == "bouton" else 40):
+                    err.append(f"matiere.arrondis.{k} : nombre de 0 à {999 if k == 'bouton' else 40} (px)")
+    return err
+
+
+# D'où vient chaque rôle de matière dérivé : recalculé si l'une de ses sources change par rapport à la base.
+SOURCES_MATIERE = {"teinte": ("accent",), "sur-teinte": ("teinte", "fond", "texte"), "verre": ("fond", "texte"),
+                   "verre-fort": ("verre",), "remplissage": ("fond", "texte"), "remplissage-survol": ("remplissage",),
+                   "bord": ("fond",), "ombre": ("fond", "texte")}
+
+
+def derive_matiere(role, p, cl):
+    sombre = cl == "sombre"
+    f, t = p["fond"], p["texte"]
+    if role == "teinte":
+        return p["accent"]
+    if role == "sur-teinte":
+        fonce, pale = min((f, t), key=lum), max((f, t), key=lum)
+        return max((fonce, pale), key=lambda x: contraste(x, p["teinte"]))
+    if role == "verre":
+        return avec_alpha(mix(f, t, .12), .62) if sombre else "#ffffffa8"
+    if role == "verre-fort":
+        return avec_alpha(p["verre"], alpha(p["verre"]) + (.28 if sombre else .2))
+    if role == "remplissage":
+        return avec_alpha(mix(f, t, .17), .62) if sombre else "#ffffffb8"
+    if role == "remplissage-survol":
+        return avec_alpha(p["remplissage"], alpha(p["remplissage"]) + .18)
+    if role == "bord":
+        return "#ffffff29" if sombre else "#ffffff"
+    if role == "ombre":
+        return "#000000" if sombre else t
+    raise KeyError(role)
+
+
+def resoudre_matiere(donne, base, p, avant):
+    """Rôles de matière d'un mode : donnés, sinon repris de la base (même luminosité de fond, sources inchangées),
+    sinon dérivés. avant : la palette de base du mode, pour savoir quels rôles ordinaires ont changé."""
+    cl = classe(p["fond"])
+    if base and classe(base["fond"]) != cl:
+        base = None
+    change = {r for r in p if not avant or r not in avant or p[r].lower() != avant[r].lower()}
+    for role in ROLES_MATIERE:
+        if role in donne:
+            p[role] = donne[role]
+            change.add(role)
+        elif base and role in base and not any(s in change for s in SOURCES_MATIERE[role]):
+            p[role] = base[role]
+        else:
+            p[role] = derive_matiere(role, p, cl)
+            change.add(role)
+    return p
+
+
+def derives_matiere(p, mat):
+    """Valeurs calculées d'un mode : teintes mêlées (de blanc en clair, de surface-2 en sombre, comme la suite
+    Homie), couleur du ciel en haut de page, formes du fond."""
+    sombre = classe(p["fond"]) == "sombre"
+    t = p["teinte"]
+    melange = p["surface-2"] if sombre else "#ffffff"
+    douce, moyenne = (.30, .40) if sombre else (.26, .55)
+    part = mat["ciel"]["sombre" if sombre else "clair"] / 100
+    d = {"teinte-douce": mix(melange, t, douce), "teinte-moyenne": mix(melange, t, moyenne),
+         "teinte-bord": mix("#ffffff", t, .7), "teinte-survol": mix("#ffffff", t, .88),
+         "ciel": mix(p["fond"] if sombre else "#ffffff", t, part), "melange": melange}
+    # Encres d'état en version douce (fond des puces et des options choisies) : en clair, la même teinte très claire
+    # (un mélange avec du blanc ternirait une encre foncée pour la lecture) ; en sombre, mêlée au fond comme la suite.
+    for e in ENCRES:
+        if sombre:
+            d[f"{e}-doux"] = mix(melange, p[e], .28)
+        else:
+            h, _, sat = colorsys.rgb_to_hls(*rgb(p[e]))
+            d[f"{e}-doux"] = hexa(colorsys.hls_to_rgb(h, .9, sat))
+    if mat["formes"]:
+        d["forme-1"] = mix("#ffffff", t, .48)
+        d["forme-2"] = mix("#ffffff", mat["formes"].get("seconde") or t, .38)
+        d["formes-op"] = .32 if sombre else 1
+    return d
+
+
+def fonds_matiere(p, mat, d):
+    """Ce sur quoi le texte peut se poser, en couleurs opaques : (dessous, panneaux), chacun {nom: couleur}."""
+    dessous = {"le fond": p["fond"], "le ciel": d["ciel"]}
+    if mat["formes"]:
+        for i in (1, 2):
+            for k in ("le fond", "le ciel"):
+                dessous[f"la forme {i} sur {k}"] = mix(dessous[k], d[f"forme-{i}"], d["formes-op"])
+    panneaux = {}
+    for k, u in dessous.items():
+        v = sur(p["verre"], u)
+        panneaux[f"le verre sur {k}"] = v
+        panneaux[f"le remplissage sur le verre sur {k}"] = sur(p["remplissage"], v)
+    return dessous, panneaux
 
 
 def lire_theme(ref, depuis, notes, chaine=()):
@@ -864,13 +1068,14 @@ def lire_theme(ref, depuis, notes, chaine=()):
     if base_ref:
         _, b, bpal = lire_theme(base_ref, chemin.parent, notes, chaine + (chemin,))
     else:
-        b, bpal = {"nom": "", "polices": {}, "arrondi": 12, "densite": "normal", "prefere": "sombre"}, {}
+        b, bpal = {"nom": "", "polices": {}, "arrondi": 12, "densite": "normal", "prefere": "sombre", "matiere": None}, {}
 
     polices = dict(b["polices"])
     for role, v in (t.get("polices") or {}).items():
         polices[role] = v
     fus = {"nom": nom, "description": t.get("description", ""), "polices": polices,
-           "arrondi": t.get("arrondi", b["arrondi"]), "densite": t.get("densite", b["densite"])}
+           "arrondi": t.get("arrondi", b["arrondi"]), "densite": t.get("densite", b["densite"]),
+           "matiere": lire_matiere(t, b)}
     donnes = [m for m in MODES if t.get(m) is not None]
     herite = "base" in t or not donnes
     repris = [m for m in MODES if m not in t and m in bpal and herite]
@@ -882,7 +1087,11 @@ def lire_theme(ref, depuis, notes, chaine=()):
     pal = {}
     for m in modes:
         defaut_fond = "#131518" if m == "sombre" else "#f4f5f6"
-        pal[m] = resoudre_mode(t.get(m) or {}, bpal.get(m), defaut_fond, nom, m, notes)
+        donne = t.get(m) or {}
+        pal[m] = resoudre_mode({r: v for r, v in donne.items() if r in ROLES}, bpal.get(m), defaut_fond, nom, m, notes)
+        if fus["matiere"]:
+            avant = {r: v for r, v in (bpal.get(m) or {}).items() if r in ROLES} or None
+            resoudre_matiere({r: v for r, v in donne.items() if r in ROLES_MATIERE}, bpal.get(m), pal[m], avant)
     pref = t.get("prefere", b.get("prefere"))
     fus["prefere"] = pref if pref in modes else modes[0]
     return nom, fus, pal
@@ -909,8 +1118,12 @@ def verifier_theme(t, nom):
             err.append(f"{m} : objet {{\"fond\": \"#...\", ...}} attendu, ou null pour retirer ce mode de la base")
             continue
         for r, v in t[m].items():
-            if r not in ROLES:
-                err.append(f"{m}.{r} : rôle inconnu (rôles : {', '.join(ROLES)})")
+            if r not in ROLES and r not in ROLES_MATIERE:
+                err.append(f"{m}.{r} : rôle inconnu (rôles : {', '.join(ROLES)} ; avec une matière : "
+                           f"{', '.join(ROLES_MATIERE)})")
+            elif r in ROLES_MATIERE and ROLES_MATIERE[r][1]:
+                if not isinstance(v, str) or not HEXA.match(v):
+                    err.append(f"{m}.{r} : couleur #rgb, #rrggbb ou #rrggbbaa (translucide) attendue")
             elif not isinstance(v, str) or not HEX.match(v):
                 err.append(f"{m}.{r} : couleur #rgb ou #rrggbb attendue")
     pol = t.get("polices")
@@ -934,6 +1147,7 @@ def verifier_theme(t, nom):
         err.append("arrondi : nombre de 0 à 24 (px)")
     if "densite" in t and not (isinstance(t["densite"], str) and t["densite"] in DENSITES):
         err.append(f"densite : {', '.join(DENSITES)}")
+    err += verifier_matiere(t.get("matiere"))
     return err
 
 
@@ -980,18 +1194,68 @@ def variables_couleurs(p, mode, indent):
     return out
 
 
+def css_rgba(c):
+    if alpha(c) >= 1:
+        return hexa(rgb(c))
+    r, g, b = (round(x * 255) for x in rgb(c))
+    return f"rgba({r}, {g}, {b}, {round(alpha(c), 2):g})"
+
+
+def variables_matiere_theme(th):
+    """Ce qui ne change pas d'un mode à l'autre : flou, saturation, épaisseur du bord, arrondis par niveau."""
+    m = th.get("matiere")
+    if not m:
+        return []
+    def px(v):
+        return f"{int(v) if v == int(v) else v}px"
+    lignes = [f"  --flou: {px(m['flou'])};", f"  --sat: {m['saturation']:g}%;", f"  --bord-l: {px(m['bord'])};"]
+    lignes += [f"  --r-{k}: {px(v)};" for k, v in m["arrondis"].items()]
+    return lignes
+
+
+def variables_matiere(p, mat, indent):
+    if not mat:
+        return []
+    d = derives_matiere(p, mat)
+    out = [f"{indent}{var}: {css_rgba(p[r])};" for r, (var, _) in ROLES_MATIERE.items() if r != "ombre"]
+    out += [f"{indent}--{k}: {d[k]};" for k in ("teinte-douce", "teinte-moyenne", "teinte-bord", "teinte-survol",
+                                                "ciel", "melange")]
+    out += [f"{indent}--{ROLES[e][2:]}-doux: {d[e + '-doux']};" for e in ENCRES]
+    r, g, b = (round(x * 255) for x in rgb(p["ombre"]))
+    for i, (geo, a) in enumerate(zip(("0 6px 16px", "0 12px 28px", "0 22px 50px"),
+                                     OMBRES[classe(p["fond"])]), 1):
+        out.append(f"{indent}--ombre-{i}: {geo} rgba({r}, {g}, {b}, {a:g});")
+    if mat["formes"]:
+        out += [f"{indent}--forme-1: {d['forme-1']};", f"{indent}--forme-2: {d['forme-2']};",
+                f"{indent}--formes-op: {d['formes-op']:g};"]
+    return out
+
+
+def attribut_matiere(th):
+    """L'attribut que build.py pose sur la page (__MATIERE__) : vide sans matière, la page reste celle d'avant."""
+    m = th.get("matiere")
+    if not m:
+        return ""
+    jetons = ["verre"] + (["formes"] if m["formes"] else []) + (["orbe"] if m["orbe"] else [])
+    return f' data-matiere="{" ".join(jetons)}"'
+
+
 def css_theme(th, pal):
     """Variables du thème sur :root. Avec deux modes, le patron à trois états : le mode préféré en base, l'autre
     selon prefers-color-scheme sauf si le viewer impose data-theme, et data-theme l'emporte dans les deux sens."""
     pref = th["prefere"]
-    lignes = [":root {"] + variables_polices(th) + variables_couleurs(pal[pref], pref, "  ") + ["}"]
+    mat = th.get("matiere")
+
+    def couleurs(m, indent):
+        return variables_couleurs(pal[m], m, indent) + variables_matiere(pal[m], mat, indent)
+    lignes = [":root {"] + variables_polices(th) + variables_matiere_theme(th) + couleurs(pref, "  ") + ["}"]
     autres = [m for m in pal if m != pref]
     if autres:
         m = autres[0]
         cs, pref_cs = ("dark", "light") if m == "sombre" else ("light", "dark")
         lignes += [f"@media (prefers-color-scheme: {cs}) {{", f'  :root:not([data-theme="{pref_cs}"]) {{']
-        lignes += variables_couleurs(pal[m], m, "    ") + ["  }", "}", f':root[data-theme="{cs}"] {{']
-        lignes += variables_couleurs(pal[m], m, "  ") + ["}"]
+        lignes += couleurs(m, "    ") + ["  }", "}", f':root[data-theme="{cs}"] {{']
+        lignes += couleurs(m, "  ") + ["}"]
     return "\n".join(lignes)
 
 
@@ -999,7 +1263,7 @@ def charger(ref, depuis):
     notes = []
     nom, th, pal = lire_theme(ref, depuis, notes)
     for m in pal:
-        lisible(pal[m], nom, m, notes)
+        lisible(pal[m], nom, m, notes, th.get("matiere"))
     return th, pal, notes
 
 
@@ -1044,12 +1308,23 @@ body { background: var(--a-bg); color: var(--a-text); font-family: system-ui, -a
 .ap-actions .btn-fin { width: auto; padding: 11px 22px; }
 .ap-actions .tenir { margin-top: 0; }
 @media (max-width: 899px) { .ap { padding-top: 28px; } .ap-p { padding: 14px 14px 18px; } }
+/* Thème à matière : le panneau porte son ciel et ses formes, la question y devient un panneau de verre. */
+.ap-p[data-matiere~="verre"] {
+  position: relative; isolation: isolate; overflow: hidden; border: var(--bord-l) solid var(--bord); border-radius: var(--r-panneau);
+  background: linear-gradient(180deg, var(--ciel) 0, var(--bg) 320px);
+}
+.ap-p[data-matiere~="verre"] .ap-mode { color: var(--text); }
+.ap-p[data-matiere~="formes"]::before, .ap-p[data-matiere~="formes"]::after {
+  content: ""; position: absolute; z-index: -1; aspect-ratio: 1; border-radius: 50%; filter: blur(2px); opacity: var(--formes-op); pointer-events: none;
+}
+.ap-p[data-matiere~="formes"]::before { width: 46%; right: -14%; top: 40px; background: var(--forme-1); }
+.ap-p[data-matiere~="formes"]::after { width: 34%; left: -12%; top: 58%; background: var(--forme-2); }
 """
 
 APERCU_Q = """<article class="q is-cur" data-type="choix" data-state="reco">
   <div class="q-head">
     <p style="margin:0"><span class="q-num">Q2</span><span class="q-type">Une réponse</span></p>
-    <div class="slot"><span class="stamp" style="--ink: var(--sun)">Reco</span></div>
+    <div class="slot"><span class="stamp" style="--ink: var(--sun); --doux: var(--sun-doux)">Reco</span></div>
   </div>
   <h2 class="q-title">Où ranger le thème de chacun ?</h2>
   <p class="q-ctx">Un seul réglage par personne, valable pour tous ses quiz.</p>
@@ -1066,7 +1341,7 @@ APERCU_Q = """<article class="q is-cur" data-type="choix" data-state="reco">
 
 def apercu(out, refs):
     if not refs:
-        ordre = ["ardoise", "papier", "cobalt", "signal"]
+        ordre = ["ardoise", "papier", "cobalt", "signal", "homie"]
         refs = sorted((x.stem for x in THEMES.glob("*.json")), key=lambda r: (r not in ordre, ordre.index(r) if r in ordre else 0, r))
     template = (ICI / "template.html").read_text(encoding="utf-8")
     style = template[template.index("<style>") + len("<style>"):template.index("</style>")]
@@ -1080,8 +1355,10 @@ def apercu(out, refs):
         panneaux = []
         for m in modes:
             cls = f"th{i}-{m}"
-            css.append(f".{cls} {{\n" + "\n".join(variables_polices(th) + variables_couleurs(pal[m], m, "  ")) + "\n}")
-            panneaux.append(f'<div class="ap-p {cls}"><p class="ap-mode">{m}</p>\n{APERCU_Q}\n</div>')
+            css.append(f".{cls} {{\n" + "\n".join(variables_polices(th) + variables_matiere_theme(th)
+                                                    + variables_couleurs(pal[m], m, "  ")
+                                                    + variables_matiere(pal[m], th.get("matiere"), "  ")) + "\n}")
+            panneaux.append(f'<div class="ap-p {cls}"{attribut_matiere(th)}><p class="ap-mode">{m}</p>\n{APERCU_Q}\n</div>')
         desc = f"<p>{html.escape(th['description'])}</p>" if th["description"] else "<p></p>"
         cle = ref if "/" not in ref and not ref.endswith(".json") else Path(ref).name
         corps.append(f'<section class="ap-th"><h2>{html.escape(th["nom"])}<code>{html.escape(cle)}</code></h2>{desc}\n'
@@ -1161,6 +1438,7 @@ def main():
     # Thème d'abord : les données du quiz, posées ensuite, ne peuvent pas contenir un marqueur à remplacer.
     page = template.replace("__POLICES__", liens_polices([th]), 1)
     page = page.replace("__THEME__", css_theme(th, pal), 1)
+    page = page.replace("__MATIERE__", attribut_matiere(th))
     page = page.replace("__NOM__", html.escape(data["nom"]), 1)
     page = page.replace("__DATA__", raw.replace("<", "\\u003c"), 1)
     out.parent.mkdir(parents=True, exist_ok=True)

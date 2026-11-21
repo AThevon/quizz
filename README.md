@@ -24,7 +24,7 @@ Pour recevoir les nouvelles versions : `/plugin`, onglet Marketplaces, `quizz`, 
 - `/quizz` : un quiz sur les questions ouvertes de la session. Claude te le propose aussi tout seul quand il a plusieurs questions.
 - `/quizz <sujet>` : un quiz sur un sujet précis.
 - « à plusieurs » (au lancement ou plus tard) : le quiz devient partageable, avec relecture et arbitrage des divergences.
-- `/quizz thème <description>` : l'apparence de tes quiz (couleurs, polices, arrondis, densité, clair et sombre). Quatre thèmes livrés : ardoise, papier, cobalt, signal.
+- `/quizz thème <description>` : l'apparence de tes quiz (couleurs, polices, arrondis, densité, clair et sombre). Cinq thèmes livrés : ardoise, papier, cobalt, signal, et homie (la bulle de verre de la suite Homie : ciel pastel, panneaux de verre, très arrondi).
 
 ## Dans la page
 

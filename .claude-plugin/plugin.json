@@ -1,7 +1,7 @@
 {
   "name": "quizz",
   "description": "Les questions que Claude te pose deviennent un quiz cliquable (recos, conséquences, nuances), puis Claude applique et te dit ce qu'il a fait.",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "author": { "name": "AThevon" },
   "repository": "https://github.com/AThevon/quizz",
   "license": "MIT",

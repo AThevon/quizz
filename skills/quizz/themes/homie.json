@@ -1,0 +1,38 @@
+{
+  "nom": "Homie",
+  "description": "La bulle de verre de la suite Homie : un ciel pervenche qui fond vers un blanc bleuté, des panneaux de verre laiteux bordés de blanc, tout en rondeurs, Fredoka et Figtree, deux formes qui dérivent au fond et l'orbe Homie. Clair d'abord, avec la nuit de la suite.",
+  "prefere": "clair",
+  "clair": {
+    "fond": "#f7f8fc", "surface": "#ffffff", "surface-2": "#eef0f8", "champ": "#ffffff", "ligne": "#e6e7ed",
+    "controle": "#7e85a8", "texte": "#1f2440", "texte-2": "#42476a", "discret": "#5b6184",
+    "accent": "#4f5bd5", "accent-hi": "#3f4ac0", "sur-accent": "#ffffff", "focus": "#5f6cf0",
+    "reco": "#945e00", "ecart": "#c2264a", "toi": "#6a4fd8", "fait": "#1f6fa8", "voile": "#171a33",
+    "teinte": "#7f8cff", "sur-teinte": "#14172b",
+    "verre": "#ffffffa8", "verre-fort": "#ffffffdb", "remplissage": "#ffffffb8", "remplissage-survol": "#ffffffe6",
+    "bord": "#ffffff", "ombre": "#1f2440"
+  },
+  "sombre": {
+    "fond": "#171a33", "surface": "#1d2140", "surface-2": "#262a4c", "champ": "#1d2140", "ligne": "#2a2c43",
+    "controle": "#9197ba", "texte": "#fdfdff", "texte-2": "#c8cce8", "discret": "#b4badd",
+    "accent": "#aeb7ff", "accent-hi": "#c3c9ff", "sur-accent": "#14172b", "focus": "#8390ff",
+    "reco": "#ffc14d", "ecart": "#ffa2ad", "toi": "#bfb2ff", "fait": "#6fcaf5", "voile": "#0d0f20",
+    "teinte": "#7f8cff", "sur-teinte": "#14172b",
+    "verre": "#2c30549e", "verre-fort": "#30345ce6", "remplissage": "#363a629e", "remplissage-survol": "#404470cc",
+    "bord": "#ffffff29", "ombre": "#000000"
+  },
+  "polices": {
+    "tampons": {"famille": "Fredoka", "graisses": [600]},
+    "titres": {"famille": "Fredoka", "graisses": [500, 600]},
+    "texte": {"famille": "Figtree", "graisses": [400, 500, 600, 700]},
+    "mono": {"famille": "Figtree", "graisses": [500, 600, 700]}
+  },
+  "arrondi": 16,
+  "densite": "normal",
+  "matiere": {
+    "ciel": {"clair": 55, "sombre": 34},
+    "flou": 16, "saturation": 140, "bord": 2,
+    "formes": {"seconde": "#3fb6f0"},
+    "orbe": true,
+    "arrondis": {"panneau": 30, "carte": 22, "champ": 16, "bouton": 999}
+  }
+}
