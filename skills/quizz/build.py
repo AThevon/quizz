@@ -2,11 +2,15 @@
 """Remplit template.html avec un fichier de questions et vérifie les données avant.
 
 Usage : python3 build.py questions.json sortie/index.html [--theme <nom|chemin>]
-        python3 build.py --apercu sortie/apercu.html [thème ...]
+        python3 build.py --apercu sortie/apercu.html [--langue en] [thème ...]
 
 Thème : --theme, sinon le champ "theme" du quiz, sinon ~/.claude/quizz-theme.json, sinon ardoise. Les thèmes
 livrés sont dans themes/ ; un thème perso part d'une base et ne donne que ce qui change. Les couleurs trop peu
 contrastées sont corrigées ici (juste assez, teinte gardée) et chaque correction est affichée.
+
+Langue : le champ "langue" du quiz ("fr" par défaut, ou "en") choisit les textes de l'interface, rangés dans
+langues/<code>.json et posés à la place des marqueurs {{clé}} du gabarit. Les données du quiz, elles, restent telles
+que Claude les a écrites, dans la langue de la personne.
 
 Le remplacement se fait ici plutôt qu'avec sed : un « & » ou un « / » dans le texte ne casse
 rien, le nom est échappé pour <title>, et chaque « < » du JSON devient \\u003c pour ne jamais
@@ -398,6 +402,9 @@ def check_prediction(q, where, kind, keys, errors):
 
 def check(data):
     errors = []
+    if "langue" in data and data["langue"] not in langues_livrees():
+        errors.append(f"langue : {' ou '.join(repr(x) for x in langues_livrees())} attendu (langue de l'interface du quiz, "
+                      f"{LANGUE_DEF!r} sans le champ), pas {data['langue']!r}")
     for key in ("nom", "titre", "questions"):
         if not data.get(key):
             errors.append(f"champ manquant : {key}")
@@ -567,6 +574,48 @@ def check(data):
         elif prec["tour"] == tour:
             errors.append(f"precedent : le tour précédent ({prec['tour']}) doit différer du tour publié ; change \"tour\" (t2, t3...)")
     return errors
+
+
+# ---------- Langues ----------
+
+LANGUES = Path(__file__).resolve().parent / "langues"
+LANGUE_DEF = "fr"
+MARQUEUR = re.compile(r"\{\{([a-z0-9_]+)\}\}")
+
+
+def langues_livrees():
+    return sorted(x.stem for x in LANGUES.glob("*.json"))
+
+
+def charger_langue(code):
+    """Textes d'une langue : page (marqueurs du gabarit), build (ce que build.py écrit), themes (descriptions de l'aperçu).
+    Chaque langue a exactement les clés de la langue par défaut : une clé oubliée casserait la page sans le dire."""
+    def lire(c):
+        try:
+            return json.loads((LANGUES / f"{c}.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as e:
+            sys.exit(f"quizz : langues/{c}.json illisible ({e})")
+    t = lire(code)
+    if code != LANGUE_DEF:
+        ref = lire(LANGUE_DEF)
+        for part in ("page", "build"):
+            manque, trop = set(ref[part]) - set(t.get(part, {})), set(t.get(part, {})) - set(ref[part])
+            if manque or trop:
+                sys.exit(f"quizz : langues/{code}.json, {part} : "
+                         + "; ".join(x for x in (f"clés manquantes {', '.join(sorted(manque))}" if manque else "",
+                                                 f"clés en trop {', '.join(sorted(trop))}" if trop else "") if x))
+    return t
+
+
+def remplir_textes(texte, t):
+    """Pose les textes de la langue à la place des marqueurs {{clé}} (page et build réunis)."""
+    textes = dict(t["page"], **t["build"])
+
+    def un(m):
+        if m.group(1) not in textes:
+            sys.exit(f"quizz : marqueur {{{{{m.group(1)}}}}} du gabarit absent de langues/*.json")
+        return textes[m.group(1)]
+    return MARQUEUR.sub(un, texte)
 
 
 # ---------- Thèmes ----------
@@ -1325,23 +1374,25 @@ body { background: var(--a-bg); color: var(--a-text); font-family: system-ui, -a
 
 APERCU_Q = """<article class="q is-cur" data-type="choix" data-state="reco">
   <div class="q-head">
-    <p style="margin:0"><span class="q-num">Q2</span><span class="q-type">Une réponse</span></p>
-    <div class="slot"><span class="stamp" style="--ink: var(--sun); --doux: var(--sun-doux)">Reco</span></div>
+    <p style="margin:0"><span class="q-num">Q2</span><span class="q-type">{{une_reponse}}</span></p>
+    <div class="slot"><span class="stamp" style="--ink: var(--sun); --doux: var(--sun-doux)">{{reco}}</span></div>
   </div>
-  <h2 class="q-title">Où ranger le thème de chacun ?</h2>
-  <p class="q-ctx">Un seul réglage par personne, valable pour tous ses quiz.</p>
+  <h2 class="q-title">{{apercu_question}}</h2>
+  <p class="q-ctx">{{apercu_contexte}}</p>
   <div class="opts has-choice" role="radiogroup">
-    <button type="button" class="opt has-reco" role="radio" aria-checked="true" data-state="reco"><span class="key">a</span><span class="otext">Dans un fichier perso, à côté du skill</span><span class="reco-tag">Ma reco</span></button>
-    <button type="button" class="opt" role="radio" aria-checked="false"><span class="key">b</span><span class="otext">Dans chaque quiz</span></button>
-    <button type="button" class="opt toi" role="radio" aria-checked="false"><span class="key">c</span><span class="otext">À toi de voir</span></button>
+    <button type="button" class="opt has-reco" role="radio" aria-checked="true" data-state="reco"><span class="key">a</span><span class="otext">{{apercu_option_a}}</span><span class="reco-tag">{{ma_reco}}</span></button>
+    <button type="button" class="opt" role="radio" aria-checked="false"><span class="key">b</span><span class="otext">{{apercu_option_b}}</span></button>
+    <button type="button" class="opt toi" role="radio" aria-checked="false"><span class="key">c</span><span class="otext">{{a_toi_de_voir}}</span></button>
   </div>
-  <div class="field"><span class="field-l">Une nuance ? <small>facultatif</small></span><textarea rows="1" placeholder="Une condition, une précision, ou rien."></textarea></div>
-  <div class="ap-tags"><span class="tag" data-state="reco">Reco</span><span class="tag" data-state="ecart">Écart</span><span class="tag" data-state="toi">À toi</span><span class="tag" data-state="fait">Répondu</span></div>
-  <div class="ap-actions"><button class="btn-fin" type="button">Voir le bilan</button><div class="tenir"><button type="button" class="tn" aria-pressed="true">J'y tiens</button><button type="button" class="tn" aria-pressed="false">Peu importe</button></div></div>
+  <div class="field"><span class="field-l">{{une_nuance}} <small>{{facultatif}}</small></span><textarea rows="1" placeholder="{{une_condition_une_precision_ou_rien}}"></textarea></div>
+  <div class="ap-tags"><span class="tag" data-state="reco">{{reco}}</span><span class="tag" data-state="ecart">{{ecart}}</span><span class="tag" data-state="toi">{{a_toi}}</span><span class="tag" data-state="fait">{{repondu}}</span></div>
+  <div class="ap-actions"><button class="btn-fin" type="button">{{voir_le_bilan}}</button><div class="tenir"><button type="button" class="tn" aria-pressed="true">{{j_y_tiens}}</button><button type="button" class="tn" aria-pressed="false">{{peu_importe}}</button></div></div>
 </article>"""
 
 
-def apercu(out, refs):
+def apercu(out, refs, langue=LANGUE_DEF):
+    t = charger_langue(langue)
+    q_html = remplir_textes(APERCU_Q, t)
     if not refs:
         ordre = ["ardoise", "papier", "cobalt", "signal", "homie"]
         refs = sorted((x.stem for x in THEMES.glob("*.json")), key=lambda r: (r not in ordre, ordre.index(r) if r in ordre else 0, r))
@@ -1360,21 +1411,21 @@ def apercu(out, refs):
             css.append(f".{cls} {{\n" + "\n".join(variables_polices(th) + variables_matiere_theme(th)
                                                     + variables_couleurs(pal[m], m, "  ")
                                                     + variables_matiere(pal[m], th.get("matiere"), "  ")) + "\n}")
-            panneaux.append(f'<div class="ap-p {cls}"{attribut_matiere(th)}><p class="ap-mode">{m}</p>\n{APERCU_Q}\n</div>')
-        desc = f"<p>{html.escape(th['description'])}</p>" if th["description"] else "<p></p>"
+            panneaux.append(f'<div class="ap-p {cls}"{attribut_matiere(th)}><p class="ap-mode">{t["build"]["apercu_mode_" + m]}</p>\n{q_html}\n</div>')
         cle = ref if "/" not in ref and not ref.endswith(".json") else Path(ref).name
+        description = t["themes"].get(cle, th["description"]) if cle == ref else th["description"]
+        desc = f"<p>{html.escape(description)}</p>" if description else "<p></p>"
         corps.append(f'<section class="ap-th"><h2>{html.escape(th["nom"])}<code>{html.escape(cle)}</code></h2>{desc}\n'
                      f'<div class="ap-modes">\n' + "\n".join(panneaux) + "\n</div></section>")
     page = "\n".join([
-        "<!doctype html>", '<html lang="fr">', "<head>", '<meta charset="utf-8">',
-        '<meta name="viewport" content="width=device-width,initial-scale=1">', "<title>Thèmes de quiz</title>",
+        "<!doctype html>", f'<html lang="{langue}">', "<head>", '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width,initial-scale=1">', f"<title>{t['build']['apercu_titre']}</title>",
         '<link rel="preconnect" href="https://fonts.googleapis.com">',
         '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
         liens_polices(charges + [{"polices": {"titres": "Familjen Grotesk"}}]),
         "<style>" + style + "\n" + "\n".join(css) + "\n" + APERCU_CSS + "</style>", "</head>", "<body>",
-        '<main class="ap">', "<header><h1>Thèmes de quiz</h1>",
-        "<p>La même question dans chaque thème, en clair et en sombre quand il a les deux. "
-        "Pour en choisir un, donne son nom à Claude.</p></header>",
+        '<main class="ap">', f"<header><h1>{t['build']['apercu_titre']}</h1>",
+        f"<p>{t['build']['apercu_intro']}</p></header>",
         "\n".join(corps), "</main>", "</body>", "</html>", ""])
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
@@ -1398,11 +1449,18 @@ def capacites(equipe, images):
 def main():
     args = sys.argv[1:]
     usage = ("usage : python3 build.py questions.json sortie/index.html [--theme <nom|chemin>]\n"
-             "        python3 build.py --apercu sortie/apercu.html [thème ...]")
+             "        python3 build.py --apercu sortie/apercu.html [--langue en] [thème ...]")
     if args[:1] == ["--apercu"]:
+        langue = LANGUE_DEF
+        if "--langue" in args:
+            i = args.index("--langue")
+            if i + 1 >= len(args) or args[i + 1] not in langues_livrees():
+                sys.exit(f"quizz : --langue {' ou '.join(langues_livrees())} attendu\n{usage}")
+            langue = args[i + 1]
+            del args[i:i + 2]
         if len(args) < 2:
             sys.exit(usage)
-        return apercu(Path(args[1]), args[2:])
+        return apercu(Path(args[1]), args[2:], langue)
     cli = None
     if "--theme" in args:
         i = args.index("--theme")
@@ -1436,9 +1494,12 @@ def main():
         print(f"{e.code}\n  {THEME_PERSO} ignoré, thème ardoise à la place", file=sys.stderr)
         pourquoi = "thème perso illisible, par défaut"
         th, pal, notes = charger("ardoise", None)
-    template = (ICI / "template.html").read_text(encoding="utf-8")
-    # Thème d'abord : les données du quiz, posées ensuite, ne peuvent pas contenir un marqueur à remplacer.
-    page = template.replace("__POLICES__", liens_polices([th]), 1)
+    langue = data.get("langue", LANGUE_DEF)
+    textes = charger_langue(langue)
+    # Textes et thème d'abord : les données du quiz, posées ensuite, ne peuvent pas contenir un marqueur à remplacer.
+    page = remplir_textes((ICI / "template.html").read_text(encoding="utf-8"), textes)
+    page = page.replace("__LANG__", "" if langue == LANGUE_DEF else f" document.documentElement.lang = {json.dumps(langue)};", 1)
+    page = page.replace("__POLICES__", liens_polices([th]), 1)
     page = page.replace("__THEME__", css_theme(th, pal), 1)
     page = page.replace("__MATIERE__", attribut_matiere(th))
     page = page.replace("__NOM__", html.escape(data["nom"]), 1)
@@ -1461,9 +1522,10 @@ def main():
         print(n)
     nm = len(data.get("messages") or [])
     nv = len(visuels_du_quiz(data))
-    print(f"{out} : {len(data['questions'])} questions, {nm} messages, {nv} visuels, tour {data['tour']}")
+    print(f"{out} : {len(data['questions'])} questions, {nm} messages, {nv} visuels, tour {data['tour']}"
+          + ("" if langue == LANGUE_DEF else f", interface {langue}"))
     if pourquoi == "par défaut" and not ASTUCE_THEME.exists():
-        print("astuce : tu peux changer l'apparence de tes quiz avec /quizz thème")
+        print(textes["build"]["astuce_theme"])
         try:
             ASTUCE_THEME.parent.mkdir(parents=True, exist_ok=True)
             ASTUCE_THEME.touch()

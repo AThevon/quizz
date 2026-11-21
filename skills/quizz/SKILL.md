@@ -12,7 +12,7 @@ L'utilisateur lance `/quizz` quand il veut répondre aux décisions en attente s
 
 **Quand le proposer.** Jusqu'à 4 questions simples, sans rien à montrer : pose-les directement avec l'outil de questions de Claude Code (`AskUserQuestion`, aperçus et notes compris), c'est immédiat. À partir de 5 questions, ou dès qu'un choix se regarde (maquette, mise en page, palette), ou s'il veut répondre depuis son téléphone : propose le quiz en une ligne (« Je t'en fais un quiz ? ») au lieu d'un pavé ; s'il dit oui, lance ce skill. S'il lance `/quizz` lui-même, fais le quiz quel que soit le nombre.
 
-**Solo par défaut.** Le quiz est pour lui seul : ni avis, ni divergences, ni `implique`. S'il dit « à plusieurs », « multiplayer », « en équipe » ou qu'il va le partager, au lancement ou plus tard, lis `${CLAUDE_SKILL_DIR}/references/a-plusieurs.md` et suis-le.
+**Solo par défaut.** Le quiz est pour lui seul : ni avis, ni divergences, ni `implique`. S'il dit « à plusieurs », « multiplayer », « en équipe », « with others » ou qu'il va le partager, au lancement ou plus tard, lis `${CLAUDE_SKILL_DIR}/references/a-plusieurs.md` et suis-le.
 
 **À lire seulement quand ça sert** (dans `${CLAUDE_SKILL_DIR}/references/`) : `a-plusieurs.md` (quiz partagé), `messages.md` (une décision appelle un message Slack, mail, DM), `registre.md` (avant un quiz et après application), `themes.md` (`/quizz thème ...`).
 
@@ -26,6 +26,7 @@ L'utilisateur lance `/quizz` quand il veut répondre aux décisions en attente s
 - Types : `choix` (une réponse), `multi` (plusieurs), `texte` (réponse libre). Chaque question a déjà un champ de nuance, et chaque choix répondu un « J'y tiens / Peu importe » : pas besoin de questions pour ça.
 - **Visuels** : quand une question porte sur quelque chose qui se regarde (style, mise en page, palette, écran, schéma, avant/après), montre-le au lieu de le décrire, sur la question ou sur chaque option (`visuel`, section 2). Tu le dessines toi-même en HTML et CSS, comme dans un artefact ; un fichier ne sert que pour ce qui existe déjà (capture réelle, photo). Un visuel appuie la question : pas de décoration, et rien quand une phrase suffit. Tu le vérifies rendu avant de publier (section 2, étape 4) : il te reprend souvent sur des maquettes cassées ou bizarres.
 - Pas de tiret cadratin, nulle part.
+- **Langue** : écris le quiz dans la langue de la personne. Si elle te parle en anglais, écris tout en anglais (titres, options, contexte, messages, bilan) et pose `"langue": "en"` : l'interface de la page (boutons, aide `?`, sommaire, bilan, Creuse, Recadrer, états d'enregistrement) passe en anglais. Sans le champ, l'interface est en français. Seules `fr` et `en` existent.
 - **Cadrage** : dès 8 questions, ou quand tu n'es pas sûr d'avoir compris le sujet, la première question vérifie ta compréhension. `{"id": "C", "cadrage": true, "titre": "J'ai bien compris ?", "contexte": "Tu veux X. Contrainte : Y. Hors sujet : Z."}`, sans type ni options : la page ajoute « Oui », « Pas tout à fait » (ouvre la nuance) et « Non » (ouvre le recadrage). Le contexte pose tes hypothèses à plat, concrètement, en deux ou trois phrases. Elle reste visible même en mode express.
 - **Conditionnelles** (`si`) : une question qui n'a de sens que selon une réponse précédente ne s'affiche que dans ce cas. `"si": {"Q2": "b"}` ou `{"Q2": ["b", "c"]}` (multi : une clé en commun suffit ; plusieurs ids : toutes les conditions). Ids visés : questions précédentes de type choix ou multi, ou le cadrage (clés `a` ou `b` seulement) ; `toi` permis sur un choix délégable. Mieux qu'une option « sans objet ».
 - **Bloquantes** (`"bloquant": true`) : ce sans quoi tu ne peux pas avancer maintenant, pas partout. S'il y en a, l'utilisateur peut cocher « Juste les bloquantes » et rendre seulement celles-là. Une bloquante conditionnelle exige un parent bloquant ou le cadrage (build.py le vérifie).
@@ -39,7 +40,7 @@ L'utilisateur lance `/quizz` quand il veut répondre aux décisions en attente s
 1. `Artifact` avec `action: "quickstart"`, `intent: "other"`, `design_systems: false` (règle de l'outil, une fois par nouvel artefact). Puis charge le skill `artifact-capabilities`. Le design est déjà fait dans le gabarit : ne le refais pas.
 2. Écris les questions dans `<scratchpad>/quizz-<sujet>/questions.json` :
    ```json
-   {"nom": "Choix du gate 0", "eyebrow": "Projet, sujet", "titre": "Ce qu'il doit décider, en une phrase",
+   {"nom": "Choix du gate 0", "langue": "fr", "eyebrow": "Projet, sujet", "titre": "Ce qu'il doit décider, en une phrase",
     "intro": "Pourquoi ces questions, combien de temps.",
     "seul": ["Ce que tu as tranché seul, une ligne par décision."],
     "contexte": "Fond pour Creuse : état actuel, contraintes, chiffres.",
@@ -62,7 +63,7 @@ L'utilisateur lance `/quizz` quand il veut répondre aux décisions en attente s
     ],
     "messages_apres": true}
    ```
-   - `nom` : le titre de l'onglet, 2 à 4 mots. `eyebrow`, `seul`, `contexte` sont facultatifs.
+   - `nom` : le titre de l'onglet, 2 à 4 mots. `eyebrow`, `seul`, `contexte` sont facultatifs. `langue` : `fr` (par défaut) ou `en`, la langue de l'interface (section 1).
    - `id` stables et lisibles (ceux du projet, ex. `S1-B`, sinon `Q1`...). Clés d'option `a`, `b`, `c`... dans l'ordre : ce sont les touches du clavier.
    - Chaque question `choix` reçoit toute seule une dernière option « À toi de voir » (clé `toi`). `"delegable": false` la retire quand elle n'a pas de sens. Les questions `multi` et `texte` n'en ont pas.
    - `tour` : `t1` pour un nouveau quiz. Chaque tour a son propre document de réponses : un tour avec d'autres questions prend `t2`, `t3`..., jamais le même tour avec des `id` réutilisés pour autre chose.
@@ -85,11 +86,11 @@ L'utilisateur lance `/quizz` quand il veut répondre aux décisions en attente s
 
 ## 3. Donner le lien
 
-Réponse courte : le lien, le nombre de questions (dont bloquantes), le temps estimé, et « clique « Envoyer mes réponses » en bas quand c'est rempli, ça me relance ; si ça part de travers, « Recadrer » (touche x) ; pour creuser une question, touche q ». Rien d'autre. La relance n'arrive que tant que cette session tourne : sinon il dira « c'est envoyé » dans le terminal. Si build.py a imprimé une ligne `astuce :`, ajoute-la à la fin, en une ligne (elle ne sort qu'une fois par personne).
+Réponse courte : le lien, le nombre de questions (dont bloquantes), le temps estimé, et « clique « Envoyer mes réponses » en bas quand c'est rempli, ça me relance ; si ça part de travers, « Recadrer » (touche x) ; pour creuser une question, touche q ». Rien d'autre. La relance n'arrive que tant que cette session tourne : sinon il dira « c'est envoyé » dans le terminal. Écris cette réponse dans la langue de la personne. Si build.py a imprimé une ligne `astuce :` (`tip:` pour un quiz en anglais), ajoute-la à la fin, en une ligne (elle ne sort qu'une fois par personne).
 
 ## 4. Relire et appliquer
 
-Quand l'utilisateur dit que c'est envoyé, demande où on en est, ou qu'un commentaire « Quiz … rempli » ou « … rendu pour les bloquantes » t'arrive de l'artefact (la plateforme y répond toute seule, ne reposte rien dans le fil) : `ArtifactData` `get`, collection `reponses`, doc `<tour>`, sur l'URL de l'artefact. Le document contient :
+Quand l'utilisateur dit que c'est envoyé, demande où on en est, ou qu'un commentaire « Quiz … rempli » ou « … rendu pour les bloquantes » t'arrive de l'artefact (quiz en anglais : « Quiz … completed », « … sent for the blocking questions only » ; dans le terminal, « it's sent ») (la plateforme y répond toute seule, ne reposte rien dans le fil) : `ArtifactData` `get`, collection `reponses`, doc `<tour>`, sur l'URL de l'artefact. Le document contient :
 - `reponses` (id → clé d'option, `toi` pour « À toi de voir », liste de clés pour `multi`, texte pour `texte`) et `notes` (id → nuance libre) ;
 - `tenir` (id → `fort` : il y tient, respecte-le strictement ; `souple` : peu importe, tu peux arbitrer autrement si ça simplifie, et dis-le) ;
 - `masquees` : questions dont la condition est fausse. Leur réponse éventuelle est sans objet, ignore-la ;
@@ -130,7 +131,7 @@ Pour republier les mêmes questions encore ouvertes : même `tour` (même `file_
 
 ## 5. Recadrer
 
-Quand l'utilisateur trouve que le quiz part de travers, il clique « Recadrer » (ou répond « Non » au cadrage). Un commentaire « Quiz … à recadrer » t'arrive (sinon il dit « recadré » dans le terminal) :
+Quand l'utilisateur trouve que le quiz part de travers, il clique « Recadrer » (ou répond « Non » au cadrage). Un commentaire « Quiz … à recadrer » t'arrive (en anglais « Quiz … needs reframing » ; sinon il dit « recadré », ou « reframed », dans le terminal) :
 
 1. `ArtifactData` `get`, collection `reponses`, doc `<tour>`. La dernière entrée de `recadrages` est la demande : `le` (son identifiant), `a` (la dernière question touchée), `raisons`, `texte`, `portee` (`suite` : garder ses réponses et réécrire le reste ; `tout` : repartir de zéro). Si elle est `annule`, ou si son `le` vaut déjà `recadre.le` du JSON publié ou `fait` de `recadrage/<tour>` (relance en double : il la modifie après envoi, chaque envoi relance), ne fais rien, résous le fil et dis-le en une ligne. S'il n'y a aucune entrée mais que le commentaire contient la demande (enregistrement raté), sers-toi du commentaire. Revérifie `annule` et `le` juste avant de republier. Lis aussi ses réponses et ses nuances : celles déjà données montrent où tu t'es trompé.
 2. Comprends l'écart avant de réécrire. S'il reste ambigu, pose-lui la question dans le terminal plutôt que de deviner une deuxième fois.
@@ -147,10 +148,10 @@ Quand l'utilisateur trouve que le quiz part de travers, il clique « Recadrer »
 
 ## 6. Approfondir
 
-Quand `bilan/<tour>` existe, la page propose « Approfondir » avec un champ « Sur quoi ? ». Elle écrit `reponses/<tour>.approfondir = {"le", "texte"}` et te relance (« Quiz … à approfondir (tour tN) : ... ») ; s'il dit « approfondir » dans le terminal, lis ce même champ.
+Quand `bilan/<tour>` existe, la page propose « Approfondir » avec un champ « Sur quoi ? ». Elle écrit `reponses/<tour>.approfondir = {"le", "texte"}` et te relance (« Quiz … à approfondir (tour tN) : ... », en anglais « Quiz …: go deeper (round tN): ... ») ; s'il dit « approfondir » (« go deeper ») dans le terminal, lis ce même champ.
 
 1. Relis `reponses/<tour>` (approfondir.texte, notes, autre) et `bilan/<tour>.suite` : ce sont les questions que ses choix ont ouvertes.
-2. Prépare le tour suivant : même `nom`, `"tour": "t2"` (puis t3...), et `"precedent": {"tour": "t1", "resume": "ce que le tour t1 a réglé, une phrase"}` que la page affiche en haut. Nouvelles questions, nouveaux ids. Même travail de cadrage, de prédictions et de fond qu'au premier tour.
+2. Prépare le tour suivant : même `nom`, même `langue`, `"tour": "t2"` (puis t3...), et `"precedent": {"tour": "t1", "resume": "ce que le tour t1 a réglé, une phrase"}` que la page affiche en haut. Nouvelles questions, nouveaux ids. Même travail de cadrage, de prédictions et de fond qu'au premier tour.
 3. `build.py`, puis republie au MÊME lien, mêmes capacités. La page du nouveau tour écrit dans `reponses/t2` et lit `messages/t2`, `bilan/t2`, `recadrage/t2`, que tu écris : relis et écris ceux-là ensuite.
 4. Résous le fil, et donne le lien en une ligne avec le nombre de questions.
 
