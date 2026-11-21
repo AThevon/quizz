@@ -30,3 +30,5 @@ Chaque personne a un thème, valable pour tous ses quiz, rangé dans `~/.claude/
    Une thèse peut porter une matière (`matiere`, en partant de `"base": "homie"` pour une bulle de verre d'une autre couleur : `teinte` et `accent` suffisent) quand la description appelle du verre, de la profondeur, du très arrondi.
 4. Écris chaque thèse en fichier de thème dans le scratchpad, construis l'aperçu avec elles (plus le thème actuel pour comparer), publie-le, et demande laquelle garder (ou ce qu'il faut ajuster).
 5. Écris le thème retenu dans `~/.claude/quizz-theme.json`. S'il en existait un, montre ce qui change et demande avant d'écraser. Rapporte les corrections de lisibilité. Les prochains quiz le prennent tout seuls.
+
+**Découverte** : la page rappelle la commande dans son aide `?` (pour l'auteur du quiz seulement), et `build.py` imprime une fois `astuce : ...` au premier quiz d'une personne qui n'a pas encore de thème perso (marqueur `~/.claude/.quizz-astuce-theme`) ; le message qui donne le lien la reprend en une ligne.
