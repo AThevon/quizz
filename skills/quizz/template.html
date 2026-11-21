@@ -9,7 +9,7 @@ __POLICES__
    couleurs, polices, arrondis (--r, 12px pour les options) et espacements (--d) : la mise en page ne bouge pas. */
 /* Thème : couleurs (--bg ... --sky, --on-ink sur l'accent, --on-state sur les encres, --voile, color-scheme), polices (--display, --title, --sans, --mono), arrondi (--r)
    et densité (--d), posés par build.py depuis themes/*.json. Chaque mode clair ou sombre suit le réglage de l'appareil
-   et le data-theme du viewer. */
+   et le data-theme du viewer. Un thème à matière (homie) ajoute ses variables et data-matiere (bloc « Matière »). */
 __THEME__
 :root {
   --gl: max(16px, env(safe-area-inset-left, 0px));
@@ -834,6 +834,213 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 .imp-avis .imp-poids { margin-left: 2px; }
 .imp-sig { color: var(--muted); }
 
+/* ---------- Matière (thème qui en déclare une : homie) ----------
+   Tout ce bloc ne s'applique que sous data-matiere, que build.py pose sur .app et les surimpressions quand le thème a
+   un champ « matiere » ; sans lui, la page rend comme avant. :where() garde à chaque règle le poids de celle qu'elle
+   remplace : les états et les règles du téléphone, plus bas ou plus précis, gardent la main sur la mise en page.
+   Variables (build.py) : --teinte (couleur franche, jamais du texte), --sur-teinte, --teinte-douce, --teinte-moyenne,
+   --teinte-bord, --teinte-survol, --ciel, --melange, --verre, --verre-fort, --remplissage, --remplissage-survol, --bord,
+   --bord-l, --flou, --sat, --ombre-1 à 3, --forme-1, --forme-2, --formes-op, --r-panneau, --r-carte, --r-champ, --r-bouton. */
+[data-matiere~="verre"] {
+  --ressort: linear(0, .009, .035 2.1%, .141 4.4%, .723 12.9%, .938 16.7%, 1.017 19.6%, 1.051 22.5%, 1.06 25.4%, 1.052 29.1%, 1.022 35.6%, 1.004 41.9%, .997 50%, 1);
+  --calme: cubic-bezier(.2, .8, .2, 1);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-matiere~="verre"] { --verre: var(--verre-fort); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  [data-matiere~="verre"] { --verre: var(--verre-fort); --flou: 0px; }
+}
+
+/* Le ciel en haut de page et les deux formes qui dérivent, derrière tout et fixes. */
+.app[data-matiere~="verre"] { position: relative; isolation: isolate; }
+.app[data-matiere~="verre"]::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: 420px; z-index: -2; pointer-events: none;
+  background: linear-gradient(180deg, var(--ciel) 0, var(--bg) 320px);
+}
+.app[data-matiere~="formes"]::after, .app[data-matiere~="formes"] > main::before {
+  content: ""; position: fixed; z-index: -1; aspect-ratio: 1; border-radius: 50%; pointer-events: none;
+  filter: blur(2px); opacity: var(--formes-op);
+}
+.app[data-matiere~="formes"]::after { width: min(52vw, 520px); right: -12vw; top: 90px; background: var(--forme-1); animation: mt-derive 90s linear infinite; }
+.app[data-matiere~="formes"] > main::before { width: min(36vw, 360px); left: -10vw; top: 46vh; background: var(--forme-2); animation: mt-derive 120s linear infinite reverse; }
+@keyframes mt-derive { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-28px, 18px); } 50% { transform: translate(-8px, 40px); } 75% { transform: translate(20px, 14px); } }
+
+/* Les matières : le verre flouté (rail, questions, bilan), le remplissage laiteux sans flou (options, cartes, champs). */
+:where([data-matiere~="verre"]) :is(.rail, .top, .q, .fin) {
+  background: var(--verre); -webkit-backdrop-filter: blur(var(--flou)) saturate(var(--sat)); backdrop-filter: blur(var(--flou)) saturate(var(--sat));
+  border: var(--bord-l) solid var(--bord); border-radius: var(--r-panneau); box-shadow: var(--ombre-2);
+}
+:where([data-matiere~="verre"]) :focus-visible { outline-width: 2.5px; outline-offset: 2px; }
+
+/* Rail : un verre, la question en cours en teinte douce avec un liseré blanc, comme la vue courante de la suite. */
+:where([data-matiere~="verre"]) .rail-head { border-bottom-color: var(--line); }
+:where([data-matiere~="verre"]) .reste-n { font-weight: 600; }
+:where([data-matiere~="verre"]) .reste-l { font-weight: 600; color: var(--text); }
+:where([data-matiere~="verre"]) .rail-group { margin-left: 52px; font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: none; }
+:where([data-matiere~="verre"]) .ri { border-radius: var(--r-champ); transition: background-color 180ms var(--calme); }
+:where([data-matiere~="verre"]) .ri:hover { background: var(--remplissage); }
+:where([data-matiere~="verre"]) .ri[aria-current="true"] { background: var(--teinte-douce); box-shadow: inset 0 0 0 2px var(--bord); }
+:where([data-matiere~="verre"]) .ri[aria-current="true"] .ri-num { color: var(--text); }
+:where([data-matiere~="verre"]) .ri[aria-current="true"] .ri-chk path { stroke: var(--text); }
+:where([data-matiere~="verre"]) .rail-lum { display: none; }
+:where([data-matiere~="verre"]) .rail-foot { border-top-color: var(--line); }
+:where([data-matiere~="verre"]) .reste-chk path { stroke: var(--text); }
+
+/* Touches : la pastille de la suite. */
+:where([data-matiere~="verre"]) kbd {
+  display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; vertical-align: middle;
+  font-family: var(--sans); font-size: 11.5px; font-weight: 700; line-height: 1; color: var(--muted);
+  background: var(--remplissage); border: 1.5px solid var(--bord); border-radius: 7px; box-shadow: 0 1px 0 var(--line);
+}
+
+/* Boutons : capsules molles. La teinte franche ne va qu'à l'action principale (Envoyer, Voir le bilan). */
+:where([data-matiere~="verre"]) .btn-fin {
+  border: 2px solid var(--teinte-bord); border-radius: var(--r-bouton); background: var(--teinte); color: var(--sur-teinte);
+  font-weight: 600; box-shadow: var(--ombre-1);
+  transition: transform 440ms var(--ressort), background-color 180ms var(--calme);
+}
+:where([data-matiere~="verre"]) .btn-fin:hover { background: var(--teinte-survol); }
+:where([data-matiere~="verre"]) .btn-fin:active { transform: scale(.96); }
+:where([data-matiere~="verre"]) .btn-fin:disabled { background: var(--remplissage); border-color: var(--bord); color: var(--text-2); box-shadow: none; transform: none; }
+:where([data-matiere~="verre"]) .btn-copy {
+  border: 2px solid var(--bord); border-radius: var(--r-bouton); background: var(--teinte-moyenne); color: var(--text);
+  font-weight: 600; box-shadow: var(--ombre-1);
+  transition: transform 440ms var(--ressort), background-color 180ms var(--calme);
+}
+:where([data-matiere~="verre"]) .btn-copy:hover { background: var(--teinte-douce); }
+:where([data-matiere~="verre"]) .btn-copy:active { transform: scale(.96); }
+:where([data-matiere~="verre"]) .btn-copy:disabled { background: var(--remplissage); color: var(--text-2); box-shadow: none; transform: none; }
+:where([data-matiere~="verre"]) :is(.tn, .sq-btn, .cr-btn, .cr-copier, .mini-rc, .cr-ask, .arb-tr, .express) {
+  border: 2px solid var(--bord); border-radius: var(--r-bouton); background: var(--remplissage); color: var(--text);
+  font-weight: 600; box-shadow: var(--ombre-1);
+  transition: transform 440ms var(--ressort), background-color 180ms var(--calme);
+}
+:where([data-matiere~="verre"]) .arb-out {
+  border: 2px solid var(--bord); border-radius: var(--r-champ); background: var(--remplissage); color: var(--text);
+  transition: background-color 180ms var(--calme);
+}
+:where([data-matiere~="verre"]) :is(.tn, .sq-btn, .cr-btn, .cr-copier, .mini-rc, .cr-ask, .arb-tr, .express, .arb-out):hover { border-color: var(--bord); background: var(--remplissage-survol); color: var(--text); }
+:where([data-matiere~="verre"]) :is(.tn, .sq-btn, .cr-btn, .cr-copier, .mini-rc, .cr-ask, .arb-tr, .express):active { transform: scale(.96); }
+:where([data-matiere~="verre"]) .cr-ask:disabled { background: transparent; box-shadow: none; color: var(--muted); }
+:where([data-matiere~="verre"]) .tn[aria-pressed="true"] { border-color: var(--bord); background: var(--teinte-moyenne); color: var(--text); }
+:where([data-matiere~="verre"]) .tn[aria-pressed="true"]::before { color: var(--text); }
+:where([data-matiere~="verre"]) .cr-btn[aria-expanded="true"] { border-color: var(--bord); background: var(--teinte-douce); }
+:where([data-matiere~="verre"]) .cr-btn kbd { margin-left: 2px; }
+:where([data-matiere~="verre"]) .express[aria-pressed="true"] { border-color: var(--bord); background: var(--teinte-douce); }
+:where([data-matiere~="verre"]) .express-sw { width: 34px; height: 20px; border: 0; border-radius: 10px; background: var(--line); transition: background-color 180ms var(--calme); }
+:where([data-matiere~="verre"]) .express-sw::after { top: 3px; left: 3px; width: 14px; height: 14px; background: #fff; box-shadow: 0 2px 6px rgba(31, 36, 64, .2); transition: transform 440ms var(--ressort); }
+:where([data-matiere~="verre"]) .express[aria-pressed="true"] .express-sw { border-color: transparent; background: var(--teinte); }
+:where([data-matiere~="verre"]) .express[aria-pressed="true"] .express-sw::after { background: #fff; transform: translateX(14px); }
+:where([data-matiere~="verre"]) .arb-tr { border-color: var(--teinte-moyenne); }
+
+/* En-tête : un panneau de verre sur le ciel, comme l'accueil de la suite ; pas de surtitre en capitales (une puce douce
+   à la place), titre rond. */
+:where([data-matiere~="verre"]) .top { max-width: 960px; padding: 24px 28px 26px; }
+:where([data-matiere~="verre"]) .eyebrow {
+  display: inline-flex; align-items: center; min-height: 26px; padding: 2px 12px; margin-bottom: 16px;
+  font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: 0; text-transform: none;
+  color: var(--text); background: var(--teinte-douce); border-radius: var(--r-bouton);
+}
+:where([data-matiere~="verre"]) h1 { font-weight: 600; font-size: clamp(30px, 3vw, 38px); line-height: 1.05; }
+:where([data-matiere~="verre"]) .keys-hint { color: var(--text-2); }
+:where([data-matiere~="verre"]) .seul { border-top-color: var(--line); }
+:where([data-matiere~="verre"]) .seul summary::before { border: 0; border-radius: 50%; background: var(--teinte-douce); color: var(--text); font-family: var(--sans); font-weight: 700; }
+:where([data-matiere~="verre"]) .group-h {
+  font-family: var(--title); font-weight: 600; font-size: 22px; line-height: 1.15; letter-spacing: -.01em; text-transform: none;
+  color: var(--text); margin-bottom: 16px; padding-left: 6px;
+}
+:where([data-matiere~="verre"]) .group-h::after { display: none; }
+:where([data-matiere~="verre"]) .group { margin-top: calc(48px * var(--d)); }
+
+/* Question : un panneau de verre, les options en remplissage empilées dedans. */
+:where([data-matiere~="verre"]) .q { padding: 14px 26px 26px; }
+:where([data-matiere~="verre"]) .q + .q { margin-top: calc(24px * var(--d)); }
+:where([data-matiere~="verre"]) .q-num {
+  border: 0; border-radius: var(--r-bouton); padding: 3px 10px; font-family: var(--sans); font-weight: 700;
+  color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+:where([data-matiere~="verre"]) .q.is-cur .q-num { border-color: transparent; color: var(--text); background: var(--teinte-moyenne); }
+:where([data-matiere~="verre"]) .q-title { font-weight: 600; font-size: clamp(21px, 2vw, 25px); line-height: 1.18; }
+:where([data-matiere~="verre"]) .stamp {
+  font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: 0; text-transform: none; color: var(--text);
+  border: 0; border-radius: var(--r-bouton); padding: 6px 15px; transform: none;
+  background: var(--doux, color-mix(in srgb, var(--ink) 24%, var(--melange)));
+}
+/* Les encres d'état en version douce (--sun-doux... posées par build.py) suivent --ink. */
+:where([data-matiere~="verre"]) :is(.stamp, .avis-tag) { --doux: var(--sky-doux); }
+:where([data-matiere~="verre"]) :is([data-state="reco"], .reco-tag) { --doux: var(--sun-doux); }
+:where([data-matiere~="verre"]) :is([data-state="ecart"], .bloq) { --doux: var(--rasp-doux); }
+:where([data-matiere~="verre"]) :is([data-state="toi"], .rc-opts) { --doux: var(--lilac-doux); }
+:where([data-matiere~="verre"]) [data-state="fait"] { --doux: var(--sky-doux); }
+:where([data-matiere~="verre"]) .q[data-type="multi"] .opt[aria-checked="true"] { --doux: var(--sky-doux); }
+:where([data-matiere~="verre"]) .recap .vide-h { --doux: color-mix(in srgb, var(--text) 8%, transparent); }
+:where([data-matiere~="verre"]) .stamp.pose { animation: mt-pose 440ms var(--ressort) both; }
+@keyframes mt-pose { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
+:where([data-matiere~="verre"]) .opt {
+  background: var(--remplissage); border: var(--bord-l) solid var(--bord); border-radius: var(--r-champ); box-shadow: var(--ombre-1);
+  transition: opacity 160ms ease, background-color 180ms var(--calme), box-shadow 180ms var(--calme), transform 440ms var(--ressort);
+}
+:where([data-matiere~="verre"]) .opt:hover { border-color: var(--bord); background: var(--remplissage-survol); }
+:where([data-matiere~="verre"]) .opt:active { transform: scale(.99); }
+:where([data-matiere~="verre"]) .opt[aria-checked="true"] {
+  border-color: var(--bord); border-width: var(--bord-l); padding: calc(10px * var(--d)) calc(14px * var(--d));
+  background: var(--doux, color-mix(in srgb, var(--ink) 16%, var(--melange))); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ink) 55%, var(--melange)), var(--ombre-1);
+}
+:where([data-matiere~="verre"]) .key { border: 0; background: var(--teinte-douce); color: var(--text); font-family: var(--sans); text-transform: none; }
+:where([data-matiere~="verre"]) .opt[aria-checked="true"] .key { background: var(--ink); color: var(--on-state); }
+:where([data-matiere~="verre"]) .opt-vis { top: calc(var(--bord-l) + var(--opy)); left: calc(var(--bord-l) + var(--opx) + 30px + 14px); }
+:where([data-matiere~="verre"]) :is(.reco-tag, .bloq, .avis-tag) {
+  font-family: var(--display); font-weight: 600; font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--text);
+  border: 0; border-radius: var(--r-bouton); padding: 2px 10px; background: var(--doux);
+}
+:where([data-matiere~="verre"]) .vis-btn { border: var(--bord-l) solid var(--bord); border-radius: var(--r-champ); box-shadow: var(--ombre-1); transition: box-shadow 180ms var(--calme); }
+:where([data-matiere~="verre"]) .vis-btn:hover { border-color: var(--bord); box-shadow: var(--ombre-2); }
+:where([data-matiere~="verre"]) .vis-ic { border: 0; border-radius: 50%; background: var(--remplissage-survol); color: var(--text); }
+
+/* Champs : remplissage, bord blanc, liseré d'encre ; au focus un halo net de teinte et le bord en couleur de focus. */
+:where([data-matiere~="verre"]) :is(textarea, .ap-in) {
+  background: var(--remplissage); border: var(--bord-l) solid var(--bord); border-radius: var(--r-champ);
+  box-shadow: inset 0 0 0 1px var(--line); transition: background-color 180ms var(--calme), box-shadow 180ms var(--calme);
+}
+:where([data-matiere~="verre"]) :is(textarea, .ap-in):hover { border-color: var(--bord); background: var(--remplissage-survol); }
+:where([data-matiere~="verre"]) :is(textarea, .ap-in):focus-visible { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px var(--teinte-moyenne); }
+
+/* Bilan, messages, Creuse, bandeaux : des cartes de remplissage ; les liserés deviennent des ombres internes. */
+:where([data-matiere~="verre"]) .fin { margin-top: calc(48px * var(--d)); padding: calc(28px * var(--d)) 28px calc(30px * var(--d)); }
+:where([data-matiere~="verre"]) :is(.fin h2, .msgs h3) { font-weight: 600; text-transform: lowercase; }
+:where([data-matiere~="verre"]) :is(.recap h3, .fait h4, .appro h4) {
+  font-family: var(--title); font-weight: 600; font-size: 17px; letter-spacing: 0; text-transform: none; color: var(--text);
+}
+:where([data-matiere~="verre"]) .recap h3 .n {
+  font-family: var(--sans); color: var(--text); border-radius: var(--r-bouton); padding: 1px 9px;
+  background: var(--doux, color-mix(in srgb, var(--text) 8%, transparent));
+}
+:where([data-matiere~="verre"]) .rrow { background: var(--remplissage); border: var(--bord-l) solid var(--bord); border-radius: var(--r-champ); transition: background-color 180ms var(--calme); }
+:where([data-matiere~="verre"]) .rrow:hover { background: var(--remplissage-survol); }
+:where([data-matiere~="verre"]) .rrow.fixe:hover { background: var(--remplissage); }
+:where([data-matiere~="verre"]) .msgs { border-top-color: var(--line); }
+:where([data-matiere~="verre"]) .msg { background: var(--remplissage); border: var(--bord-l) solid var(--bord); border-radius: var(--r-carte); box-shadow: var(--ombre-1); }
+:where([data-matiere~="verre"]) .msg[data-statut="ecarte"] { background: transparent; border-style: dashed; border-color: var(--control); box-shadow: none; }
+:where([data-matiere~="verre"]) .msg-fmt { border: 0; border-radius: var(--r-bouton); background: color-mix(in srgb, var(--text) 8%, transparent); font-family: var(--sans); font-weight: 600; padding: 1px 9px; }
+:where([data-matiere~="verre"]) .appro { border-top-color: var(--line); }
+:where([data-matiere~="verre"]) :is(.rc-banner, .sq, .cr, .arb-syn, .arb-msg) {
+  background: var(--remplissage); border: var(--bord-l) solid var(--bord); border-radius: var(--r-carte);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--lis, transparent) 60%, transparent), var(--ombre-1);
+}
+:where([data-matiere~="verre"]) .rc-banner { --lis: var(--lilac); }
+:where([data-matiere~="verre"]) .rc-banner[data-etat="pret"] { --lis: var(--teinte); border-left-color: var(--bord); }
+:where([data-matiere~="verre"]) .rc-banner[data-etat="fait"] { --lis: var(--sky); border-left-color: var(--bord); }
+:where([data-matiere~="verre"]) .cr { --lis: var(--sky); }
+:where([data-matiere~="verre"]) .cr.fixe { --lis: transparent; border-left-color: var(--bord); }
+:where([data-matiere~="verre"]) .cr.calme { transition: box-shadow 400ms ease; }
+:where([data-matiere~="verre"]) .arb-syn { --lis: var(--sky); }
+:where([data-matiere~="verre"]) .arb-msg { --lis: var(--lilac); }
+:where([data-matiere~="verre"]) .arb-col { background: var(--remplissage); border: var(--bord-l) solid var(--bord); border-radius: var(--r-champ); }
+:where([data-matiere~="verre"]) .arb-col.moi { box-shadow: inset 0 0 0 2px var(--teinte-moyenne); }
+:where([data-matiere~="verre"]) .cl code, :where([data-matiere~="verre"]) .cl-i code { border-radius: 6px; }
+:where([data-matiere~="verre"]) :is(.avis-h, .rv-h, .sq-mark, .rrow-mark) { letter-spacing: .02em; text-transform: none; }
+
 /* ---------- Mobile ---------- */
 @media (max-width: 899px) {
   body { font-size: 16px; }
@@ -964,6 +1171,60 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 /* Transition de navigation : seuls les blocs visibles reçoivent l'effet, le temps de l'effet. */
 .fx-on { will-change: opacity, filter; }
 
+/* ---------- Matière, suite : ce qui doit passer après les règles du téléphone et des surimpressions ---------- */
+@media (max-width: 899px) {
+  /* La barre d'avancement devient une capsule de verre qui flotte en haut. */
+  :where([data-matiere~="verre"]) .mini {
+    top: calc(env(safe-area-inset-top, 0px) + 8px); margin: 8px 0 14px; padding: 6px 8px 6px 14px;
+    background: var(--verre); -webkit-backdrop-filter: blur(var(--flou)) saturate(var(--sat)); backdrop-filter: blur(var(--flou)) saturate(var(--sat));
+    border: var(--bord-l) solid var(--bord); border-radius: var(--r-bouton); box-shadow: var(--ombre-2);
+  }
+  :where([data-matiere~="verre"]) .mini-count .reste-l { font-weight: 500; color: var(--text-2); }
+  :where([data-matiere~="verre"]) .pill { font-family: var(--sans); border-color: var(--control); background: var(--remplissage); }
+  :where([data-matiere~="verre"]) .pill[data-state]:not([data-state="vide"]) { border-color: var(--teinte-douce); background: var(--teinte-douce); color: var(--text); }
+  :where([data-matiere~="verre"]) .pill[aria-current="true"] { box-shadow: 0 0 0 2px var(--melange), 0 0 0 4px var(--focus); }
+  :where([data-matiere~="verre"]) .pill[data-att]::after { box-shadow: 0 0 0 2px var(--melange); }
+  :where([data-matiere~="verre"]) .q { padding: 10px 16px 20px; }
+  :where([data-matiere~="verre"]) .q + .q { margin-top: calc(20px * var(--d)); }
+  :where([data-matiere~="verre"]) .group { margin-top: calc(40px * var(--d)); }
+  :where([data-matiere~="verre"]) .stamp { font-size: 14px; padding: 5px 13px; }
+  :where([data-matiere~="verre"]) .fin { margin-top: calc(40px * var(--d)); padding: 22px 16px 24px; }
+}
+
+/* Surimpressions : un voile léger, une carte de verre fort. */
+.keys[data-matiere~="verre"] { background: color-mix(in srgb, var(--voile) 66%, transparent); }
+:where([data-matiere~="verre"]) .keys-card {
+  background: var(--verre-fort); -webkit-backdrop-filter: blur(22px) saturate(var(--sat)); backdrop-filter: blur(22px) saturate(var(--sat));
+  border: var(--bord-l) solid var(--bord); border-radius: var(--r-panneau); box-shadow: var(--ombre-3);
+}
+:where([data-matiere~="verre"]) .keys-top h2 { font-weight: 600; }
+:where([data-matiere~="verre"]) .keys-top h2:not(#zoom-h) { text-transform: lowercase; }
+:where([data-matiere~="verre"]) .keys-close {
+  border: 2px solid var(--bord); border-radius: var(--r-bouton); background: var(--remplissage); color: var(--text);
+  font-weight: 600; box-shadow: var(--ombre-1); transition: transform 440ms var(--ressort), background-color 180ms var(--calme);
+}
+:where([data-matiere~="verre"]) .keys-close:hover { border-color: var(--bord); background: var(--remplissage-survol); color: var(--text); }
+:where([data-matiere~="verre"]) .keys-close:active { transform: scale(.96); }
+:where([data-matiere~="verre"]) .keys-grid h3 { font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: none; }
+:where([data-matiere~="verre"]) .keys-grid kbd { min-width: 26px; height: 26px; font-size: 12.5px; padding: 0 7px; }
+:where([data-matiere~="verre"]) #ap .rc-actions, :where([data-matiere~="verre"]) #imp .rc-actions {
+  background: var(--verre-fort); -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px); border-top-color: var(--line);
+}
+
+/* Homie, l'orbe : discrète, devant « avant de rendre », elle cligne de temps en temps. Blanche et laiteuse dans les deux modes. */
+:where([data-matiere~="orbe"]) .fin h2 { position: relative; display: flex; align-items: center; gap: 14px; }
+:where([data-matiere~="orbe"]) .fin h2::before {
+  content: ""; flex: none; width: 46px; height: 46px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .92);
+  background: radial-gradient(ellipse 13% 8% at 33% 19%, rgba(255, 255, 255, .9) 0 90%, transparent 100%),
+              radial-gradient(circle at 50% 62%, color-mix(in srgb, var(--teinte) 14%, rgba(255, 255, 255, .9)) 0, rgba(255, 255, 255, .72) 62%);
+  box-shadow: var(--ombre-2); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+:where([data-matiere~="orbe"]) .fin h2::after {
+  content: ""; position: absolute; left: 14px; top: calc(50% - 4.6px); width: 5.3px; height: 9.2px; border-radius: 99px;
+  background: #1f2440; box-shadow: 12.7px 0 0 #1f2440; transform-origin: 50% 55%; animation: mt-cligne 5.6s infinite;
+}
+@keyframes mt-cligne { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.08); } }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .stamp.pose { animation: none; }
@@ -984,7 +1245,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   </defs>
 </svg>
 
-<div class="app">
+<div class="app"__MATIERE__>
   <aside class="rail" aria-label="Sommaire des questions">
     <div class="rail-head">
       <span class="reste-n" id="reste-n" aria-hidden="true"></span>
@@ -1048,7 +1309,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   </main>
 </div>
 
-<div class="keys" id="keys" role="dialog" aria-modal="true" aria-labelledby="keys-h" hidden>
+<div class="keys" id="keys"__MATIERE__ role="dialog" aria-modal="true" aria-labelledby="keys-h" hidden>
   <div class="keys-card">
     <div class="keys-top">
       <h2 id="keys-h">Raccourcis</h2>
@@ -1081,7 +1342,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   </div>
 </div>
 
-<div class="keys" id="zoom" role="dialog" aria-modal="true" aria-labelledby="zoom-h" hidden>
+<div class="keys" id="zoom"__MATIERE__ role="dialog" aria-modal="true" aria-labelledby="zoom-h" hidden>
   <div class="keys-card zoom-card">
     <div class="keys-top">
       <h2 id="zoom-h"></h2>
@@ -1101,7 +1362,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   </div>
 </div>
 
-<div class="keys" id="rc" role="dialog" aria-modal="true" aria-labelledby="rc-h" hidden>
+<div class="keys" id="rc"__MATIERE__ role="dialog" aria-modal="true" aria-labelledby="rc-h" hidden>
   <div class="keys-card rc-card">
     <div class="keys-top">
       <h2 id="rc-h">Recadrer le quiz</h2>
@@ -1123,7 +1384,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   </div>
 </div>
 
-<div class="keys" id="ap" role="dialog" aria-modal="true" aria-labelledby="ap-h" hidden>
+<div class="keys" id="ap"__MATIERE__ role="dialog" aria-modal="true" aria-labelledby="ap-h" hidden>
   <div class="keys-card rc-card">
     <div class="keys-top">
       <h2 id="ap-h">Appliquer</h2>
@@ -1142,7 +1403,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   </div>
 </div>
 
-<div class="keys" id="imp" role="dialog" aria-modal="true" aria-labelledby="imp-h" aria-describedby="imp-lead" hidden>
+<div class="keys" id="imp"__MATIERE__ role="dialog" aria-modal="true" aria-labelledby="imp-h" aria-describedby="imp-lead" hidden>
   <div class="keys-card rc-card">
     <div class="keys-top">
       <h2 id="imp-h">Ce que ça implique</h2>
@@ -2265,6 +2526,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
       if (txt) {
         var st = h("span", { class: "stamp", text: txt });
         st.style.setProperty("--ink", INK[s]);
+        st.style.setProperty("--doux", INK[s].replace(")", "-doux)"));  // version douce, lue par un thème à matière
         if (pop && !RM.matches) st.classList.add("pose");
         q.slot.appendChild(st);
       }
@@ -2502,7 +2764,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   function block(title, ink, s, none, sub, filtre) {
     var list = QS.filter(function (q) { return !q.masq && statut(q) === s && (!filtre || filtre(q)); });
     var sec = h("div", null, h("h3", { class: ink ? "" : "vide-h" }, title, h("span", { class: "n", text: String(list.length) })));
-    if (ink) sec.style.setProperty("--ink", "var(--" + ink + ")");
+    if (ink) { sec.style.setProperty("--ink", "var(--" + ink + ")"); sec.style.setProperty("--doux", "var(--" + ink + "-doux)"); }
     if (!list.length) { sec.appendChild(h("p", { class: "rnone", text: none })); return sec; }
     sec.appendChild(lignes(list, sub, title));
     return sec;
@@ -3113,7 +3375,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
         : h("div", { class: "rrow fixe" }, num, t)));
     });
     part.appendChild(ul);
-    if (ink) part.style.setProperty("--ink", "var(--" + ink + ")");
+    if (ink) { part.style.setProperty("--ink", "var(--" + ink + ")"); part.style.setProperty("--doux", "var(--" + ink + "-doux)"); }
     return part;
   }
   // Reconstruit seulement si le bilan change, ou si une question qu'il cite apparaît ou disparaît (lien ou ligne simple).
