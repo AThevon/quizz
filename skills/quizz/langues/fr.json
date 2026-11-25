@@ -584,7 +584,7 @@
   "question_suivante": "Question suivante",
   "question_precedente": "Question précédente",
   "afficher_cette_aide": "Afficher cette aide",
-  "aide_theme": "Changer l'apparence de tes quiz : dans Claude Code, tape <kbd>/quizz thème</kbd>.",
+  "aide_theme": "Changer l'apparence de tes quiz (Bubble par défaut) : dans Claude Code, tape <kbd>/quizz thème</kbd>.",
   "precedent": "Précédent",
   "suivant": "Suivant",
   "ce_qui_cloche_titre": "Ce qui cloche",
@@ -603,7 +603,7 @@
   "guillemets_neutralises": "«»"
  },
  "build": {
-  "astuce_theme": "astuce : tu peux changer l'apparence de tes quiz avec /quizz thème",
+  "astuce_theme": "astuce : tes quiz sont en Bubble, le thème par défaut ; tu peux changer leur apparence avec /quizz thème",
   "apercu_titre": "Thèmes de quiz",
   "apercu_intro": "La même question dans chaque thème, en clair et en sombre quand il a les deux. Pour en choisir un, donne son nom à Claude.",
   "apercu_mode_sombre": "sombre",

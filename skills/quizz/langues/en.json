@@ -584,7 +584,7 @@
   "question_suivante": "Next question",
   "question_precedente": "Previous question",
   "afficher_cette_aide": "Show this help",
-  "aide_theme": "Change how your quizzes look: in Claude Code, type <kbd>/quizz theme</kbd>.",
+  "aide_theme": "Change how your quizzes look (Bubble by default): in Claude Code, type <kbd>/quizz theme</kbd>.",
   "precedent": "Previous",
   "suivant": "Next",
   "ce_qui_cloche_titre": "What's off",
@@ -603,7 +603,7 @@
   "guillemets_neutralises": "“”«»"
  },
  "build": {
-  "astuce_theme": "tip: you can change how your quizzes look with /quizz theme",
+  "astuce_theme": "tip: your quizzes use Bubble, the default theme; you can change how they look with /quizz theme",
   "apercu_titre": "Quiz themes",
   "apercu_intro": "The same question in every theme, light and dark when it has both. To pick one, tell Claude its name.",
   "apercu_mode_sombre": "dark",
@@ -615,8 +615,8 @@
  },
  "themes": {
   "ardoise": "The original theme: dark monochrome slate, a single green accent for the interface, stamps in Anton. Dark only.",
+  "bubble": "The glass bubble, the default theme: a periwinkle sky fading to bluish white, milky glass panels with white edges, rounded everywhere, Fredoka and Figtree, two shapes drifting in the back and a small orb. Light first, with an indigo night mode.",
   "cobalt": "A deep cobalt blue background, a chartreuse accent that pops on it, soft corners. Dark first, with a pale blue light mode.",
-  "homie": "The glass bubble of the Homie suite: a periwinkle sky fading to bluish white, milky glass panels with white edges, rounded everywhere, Fredoka and Figtree, two shapes drifting in the back and the Homie orb. Light first, with the suite's night mode.",
   "papier": "Paper grey and the blue-green ink of a fountain pen, discreet corners, room between questions: made for reading at length. Light first, with a carbon-paper dark mode.",
   "signal": "Crisp white, solid black and safety orange, sharp corners and a tight layout: for short quizzes you get through fast. Light first, with a black dark mode."
  }

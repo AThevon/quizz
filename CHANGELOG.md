@@ -2,6 +2,15 @@
 
 Versions follow [SemVer](https://semver.org/). Details for each version are on the [Releases](https://github.com/AThevon/quizz/releases) page.
 
+## 1.9.0 (2026-11-25)
+
+- Bubble is now the default theme: quizzes of anyone who has not picked a theme, and the decision log. It is the former `homie` theme, renamed, with the same look.
+- `ardoise` becomes a choice like the others: `/quizz theme ardoise`, or `{"nom": "Ardoise", "base": "ardoise"}` in `~/.claude/quizz-theme.json`.
+- `homie` still works everywhere a theme name does (`--theme`, the quiz's `theme` field, a custom theme's `base`, the preview). A custom theme without a `base` still starts from `ardoise`.
+- A personal theme that is broken or names an unknown theme now falls back to Bubble, with the same warning as before.
+- The decision log page follows Bubble, light and dark. An already published log keeps its look until it is published again.
+- The `?` help and the one-time theme tip name the default theme.
+
 ## 1.8.0 (2026-11-21)
 
 - The quiz interface now exists in English: a quiz with `"langue": "en"` gets English buttons, help, overview, summary, Dig in, Reframe, save states, dates and the prompts sent to the in-page Claude. Claude writes the quiz in your language and sets the field when you talk to it in English. Without the field, the page is French and byte for byte the same as before.

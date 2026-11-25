@@ -9,7 +9,7 @@ __POLICES__
    couleurs, polices, arrondis (--r, 12px pour les options) et espacements (--d) : la mise en page ne bouge pas. */
 /* Thème : couleurs (--bg ... --sky, --on-ink sur l'accent, --on-state sur les encres, --voile, color-scheme), polices (--display, --title, --sans, --mono), arrondi (--r)
    et densité (--d), posés par build.py depuis themes/*.json. Chaque mode clair ou sombre suit le réglage de l'appareil
-   et le data-theme du viewer. Un thème à matière (homie) ajoute ses variables et data-matiere (bloc « Matière »). */
+   et le data-theme du viewer. Un thème à matière (bubble) ajoute ses variables et data-matiere (bloc « Matière »). */
 __THEME__
 :root {
   --gl: max(16px, env(safe-area-inset-left, 0px));
@@ -834,7 +834,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
 .imp-avis .imp-poids { margin-left: 2px; }
 .imp-sig { color: var(--muted); }
 
-/* ---------- Matière (thème qui en déclare une : homie) ----------
+/* ---------- Matière (thème qui en déclare une : bubble) ----------
    Tout ce bloc ne s'applique que sous data-matiere, que build.py pose sur .app et les surimpressions quand le thème a
    un champ « matiere » ; sans lui, la page rend comme avant. :where() garde à chaque règle le poids de celle qu'elle
    remplace : les états et les règles du téléphone, plus bas ou plus précis, gardent la main sur la mise en page.
@@ -1213,7 +1213,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   background: var(--verre-fort); -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px); border-top-color: var(--line);
 }
 
-/* Homie, l'orbe : discrète, devant « avant de rendre », elle cligne de temps en temps. Blanche et laiteuse dans les deux modes. */
+/* L'orbe : discrète, devant « avant de rendre », elle cligne de temps en temps. Blanche et laiteuse dans les deux modes. */
 :where([data-matiere~="orbe"]) .fin h2 { position: relative; display: flex; align-items: center; gap: 14px; }
 :where([data-matiere~="orbe"]) .fin h2::before {
   content: ""; flex: none; width: 46px; height: 46px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .92);

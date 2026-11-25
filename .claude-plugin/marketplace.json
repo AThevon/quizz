@@ -3,7 +3,7 @@
   "owner": { "name": "AThevon" },
   "metadata": {
     "description": "/quizz for Claude Code: pending questions become a clickable quiz, Claude applies your answers.",
-    "version": "1.8.0"
+    "version": "1.9.0"
   },
   "plugins": [
     {
