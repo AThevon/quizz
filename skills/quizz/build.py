@@ -4,7 +4,7 @@
 Usage : python3 build.py questions.json sortie/index.html [--theme <nom|chemin>]
         python3 build.py --apercu sortie/apercu.html [--langue en] [thème ...]
 
-Thème : --theme, sinon le champ "theme" du quiz, sinon ~/.claude/quizz-theme.json, sinon ardoise. Les thèmes
+Thème : --theme, sinon le champ "theme" du quiz, sinon ~/.claude/quizz-theme.json, sinon bubble. Les thèmes
 livrés sont dans themes/ ; un thème perso part d'une base et ne donne que ce qui change. Les couleurs trop peu
 contrastées sont corrigées ici (juste assez, teinte gardée) et chaque correction est affichée.
 
@@ -622,6 +622,9 @@ def remplir_textes(texte, t):
 
 ICI = Path(__file__).resolve().parent
 THEMES = ICI / "themes"
+THEME_DEF = "bubble"  # sans choix, ou quand le thème perso est illisible
+BASE_DEF = "ardoise"  # base d'un thème qui n'en nomme pas : sans matière, elle ne pose rien que le thème n'ait demandé
+ALIAS = {"homie": "bubble"}  # anciens noms de thèmes livrés, acceptés partout où un nom l'est
 THEME_PERSO = Path("~/.claude/quizz-theme.json").expanduser()
 # Posé après la première astuce sur les thèmes : elle ne revient plus.
 ASTUCE_THEME = Path("~/.claude/.quizz-astuce-theme").expanduser()
@@ -1043,8 +1046,8 @@ def resoudre_matiere(donne, base, p, avant):
 
 
 def derives_matiere(p, mat):
-    """Valeurs calculées d'un mode : teintes mêlées (de blanc en clair, de surface-2 en sombre, comme la suite
-    Homie), couleur du ciel en haut de page, formes du fond."""
+    """Valeurs calculées d'un mode : teintes mêlées (de blanc en clair, de surface-2 en sombre),
+    couleur du ciel en haut de page, formes du fond."""
     sombre = classe(p["fond"]) == "sombre"
     t = p["teinte"]
     melange = p["surface-2"] if sombre else "#ffffff"
@@ -1091,6 +1094,7 @@ def lire_theme(ref, depuis, notes, chaine=()):
     "clair": null ou "sombre": null en retire un."""
     if not isinstance(ref, str) or not ref.strip():
         sys.exit("quizz : thème vide")
+    ref = ALIAS.get(ref.lower(), ref)
     livre = THEMES / f"{ref}.json"
     if "/" not in ref and not ref.endswith(".json") and livre.is_file():
         chemin = livre
@@ -1115,9 +1119,11 @@ def lire_theme(ref, depuis, notes, chaine=()):
     if err:
         sys.exit(f"quizz : thème {nom} invalide\n  " + "\n  ".join(err))
 
-    base_ref = t.get("base", "ardoise" if chemin != (THEMES / "ardoise.json").resolve() else None)
+    base_ref = t.get("base", BASE_DEF if chemin != (THEMES / f"{BASE_DEF}.json").resolve() else None)
     if base_ref:
         _, b, bpal = lire_theme(base_ref, chemin.parent, notes, chaine + (chemin,))
+        if base_ref.lower() in ALIAS and nom.lower() == base_ref.lower():
+            nom = b["nom"]  # réglage d'avant le renommage ({"nom": "Homie", "base": "homie"}) : le nom actuel
     else:
         b, bpal = {"nom": "", "polices": {}, "arrondi": 12, "densite": "normal", "prefere": "sombre", "matiere": None}, {}
 
@@ -1319,14 +1325,14 @@ def charger(ref, depuis):
 
 
 def choisir_theme(cli, data, src):
-    """--theme > champ "theme" du quiz > ~/.claude/quizz-theme.json > ardoise."""
+    """--theme > champ "theme" du quiz > ~/.claude/quizz-theme.json > THEME_DEF."""
     if cli:
         return cli, Path.cwd(), "option --theme"
     if data.get("theme"):
         return data["theme"], src.parent, "champ theme du quiz"
     if THEME_PERSO.is_file():
         return str(THEME_PERSO), None, "thème perso"
-    return "ardoise", None, "par défaut"
+    return THEME_DEF, None, "par défaut"
 
 
 # ---------- Aperçu ----------
@@ -1394,7 +1400,7 @@ def apercu(out, refs, langue=LANGUE_DEF):
     t = charger_langue(langue)
     q_html = remplir_textes(APERCU_Q, t)
     if not refs:
-        ordre = ["ardoise", "papier", "cobalt", "signal", "homie"]
+        ordre = [THEME_DEF, "ardoise", "papier", "cobalt", "signal"]
         refs = sorted((x.stem for x in THEMES.glob("*.json")), key=lambda r: (r not in ordre, ordre.index(r) if r in ordre else 0, r))
     template = (ICI / "template.html").read_text(encoding="utf-8")
     style = template[template.index("<style>") + len("<style>"):template.index("</style>")]
@@ -1412,6 +1418,7 @@ def apercu(out, refs, langue=LANGUE_DEF):
                                                     + variables_couleurs(pal[m], m, "  ")
                                                     + variables_matiere(pal[m], th.get("matiere"), "  ")) + "\n}")
             panneaux.append(f'<div class="ap-p {cls}"{attribut_matiere(th)}><p class="ap-mode">{t["build"]["apercu_mode_" + m]}</p>\n{q_html}\n</div>')
+        ref = ALIAS.get(ref.lower(), ref)
         cle = ref if "/" not in ref and not ref.endswith(".json") else Path(ref).name
         description = t["themes"].get(cle, th["description"]) if cle == ref else th["description"]
         desc = f"<p>{html.escape(description)}</p>" if description else "<p></p>"
@@ -1491,9 +1498,9 @@ def main():
         if pourquoi != "thème perso":
             raise
         # Le fichier perso vaut pour tous les quiz : cassé, il ne doit pas bloquer chaque build.
-        print(f"{e.code}\n  {THEME_PERSO} ignoré, thème ardoise à la place", file=sys.stderr)
+        print(f"{e.code}\n  {THEME_PERSO} ignoré, thème {THEME_DEF} à la place", file=sys.stderr)
         pourquoi = "thème perso illisible, par défaut"
-        th, pal, notes = charger("ardoise", None)
+        th, pal, notes = charger(THEME_DEF, None)
     langue = data.get("langue", LANGUE_DEF)
     textes = charger_langue(langue)
     # Textes et thème d'abord : les données du quiz, posées ensuite, ne peuvent pas contenir un marqueur à remplacer.

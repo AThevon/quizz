@@ -1,6 +1,6 @@
 {
-  "nom": "Homie",
-  "description": "La bulle de verre de la suite Homie : un ciel pervenche qui fond vers un blanc bleuté, des panneaux de verre laiteux bordés de blanc, tout en rondeurs, Fredoka et Figtree, deux formes qui dérivent au fond et l'orbe Homie. Clair d'abord, avec la nuit de la suite.",
+  "nom": "Bubble",
+  "description": "La bulle de verre, le thème par défaut : un ciel pervenche qui fond vers un blanc bleuté, des panneaux de verre laiteux bordés de blanc, tout en rondeurs, Fredoka et Figtree, deux formes qui dérivent au fond et une petite orbe. Clair d'abord, avec une nuit indigo.",
   "prefere": "clair",
   "clair": {
     "fond": "#f7f8fc", "surface": "#ffffff", "surface-2": "#eef0f8", "champ": "#ffffff", "ligne": "#e6e7ed",

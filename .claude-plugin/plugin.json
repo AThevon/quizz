@@ -1,7 +1,7 @@
 {
   "name": "quizz",
   "description": "The questions Claude asks you become a clickable quiz (picks, consequences, notes), then Claude applies them and tells you what it did.",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "author": {
     "name": "AThevon"
   },

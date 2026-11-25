@@ -15,7 +15,7 @@ A Claude Code plugin: instead of a wall of questions in the terminal, Claude pub
 [![interface](https://img.shields.io/badge/interface-English%20%7C%20French-33c2a4?style=flat-square)](#in-the-page)
 [![last commit](https://img.shields.io/github/last-commit/AThevon/quizz?label=last%20commit&color=33c2a4&style=flat-square)](https://github.com/AThevon/quizz/commits/main)
 
-<img src="assets/readme/hero-homie.webp" alt="A /quizz quiz in the homie theme: the question overview on the left, a question with two drawn landing page variants, Claude's pick." width="900">
+<img src="assets/readme/hero-bubble.webp" alt="A /quizz quiz in Bubble, the default theme: the question overview on the left, a question with two drawn landing page variants, Claude's pick." width="900">
 
 </div>
 
@@ -86,12 +86,12 @@ To answer a quiz someone shares with you, there's nothing to install: the link i
 
 ## Themes
 
-Five built-in themes, light and dark when the theme has both. The layout never changes: only colors, fonts, corner radius, density and material move.
+Five built-in themes, light and dark when the theme has both. Bubble is the default one. The layout never changes: only colors, fonts, corner radius, density and material move.
 
 <table>
   <tr>
-    <td width="50%"><img src="assets/readme/theme-homie.webp" alt="The homie theme"><br><b>homie</b>: the glass bubble of the Homie suite. Pastel sky, milky glass panels, very rounded, Fredoka and Figtree.</td>
-    <td width="50%"><img src="assets/readme/theme-ardoise.webp" alt="The ardoise theme"><br><b>ardoise</b>: the original theme and the default one. Dark slate, a single green accent, stamps in Anton.</td>
+    <td width="50%"><img src="assets/readme/theme-bubble.webp" alt="The Bubble theme"><br><b>bubble</b>: the default theme, a glass bubble. Pastel sky, milky glass panels, very rounded, Fredoka and Figtree.</td>
+    <td width="50%"><img src="assets/readme/theme-ardoise.webp" alt="The ardoise theme"><br><b>ardoise</b>: the original theme. Dark slate, a single green accent, stamps in Anton.</td>
   </tr>
   <tr>
     <td><img src="assets/readme/theme-papier.webp" alt="The papier theme"><br><b>papier</b>: paper grey and blue-green ink, airy, made for reading at length.</td>
@@ -102,6 +102,7 @@ Five built-in themes, light and dark when the theme has both. The layout never c
     <td>
       <b>Changing the theme</b><br><br>
       <code>/quizz theme</code>: a preview of the built-in themes, you choose.<br><br>
+      <code>/quizz theme ardoise</code>: straight to a built-in theme.<br><br>
       <code>/quizz theme dark, midnight blue, very rounded</code>: three custom suggestions.<br><br>
       Your choice lives in <code>~/.claude/quizz-theme.json</code> and applies to all your quizzes. The page reminds you of it in its <code>?</code> help.
     </td>
