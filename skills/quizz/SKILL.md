@@ -86,11 +86,11 @@ L'utilisateur lance `/quizz` quand il veut répondre aux décisions en attente s
 
 ## 3. Donner le lien
 
-Réponse courte : le lien, le nombre de questions (dont bloquantes), le temps estimé, et « clique « Envoyer mes réponses » en bas quand c'est rempli, ça me relance ; si ça part de travers, « Recadrer » (touche x) ; pour creuser une question, touche q ». Rien d'autre. La relance n'arrive que tant que cette session tourne : sinon il dira « c'est envoyé » dans le terminal. Écris cette réponse dans la langue de la personne. Si build.py a imprimé une ligne `astuce :` (`tip:` pour un quiz en anglais), ajoute-la à la fin, en une ligne (elle ne sort qu'une fois par personne).
+Réponse courte : le lien, le nombre de questions (dont bloquantes), le temps estimé, et « clique « Envoyer mes réponses » en bas quand c'est rempli, ça me relance ; si ça part de travers, « Recadrer » (touche x) ; pour creuser une question, touche q ». Rien d'autre. La relance n'arrive que tant que cette session tourne, et pas forcément depuis un téléphone (l'app Claude mobile peut ne pas offrir l'envoi à Claude) : sinon il dira « c'est envoyé » dans la conversation, depuis n'importe quel appareil, et tu relis `reponses`. Le quiz se fait aussi bien sur iPhone que sur ordinateur : les réponses sont dans la base de l'artefact, quel que soit l'appareil. Écris cette réponse dans la langue de la personne. Si build.py a imprimé une ligne `astuce :` (`tip:` pour un quiz en anglais), ajoute-la à la fin, en une ligne (elle ne sort qu'une fois par personne).
 
 ## 4. Relire et appliquer
 
-Quand l'utilisateur dit que c'est envoyé, demande où on en est, ou qu'un commentaire « Quiz … rempli » ou « … rendu pour les bloquantes » t'arrive de l'artefact (quiz en anglais : « Quiz … completed », « … sent for the blocking questions only » ; dans le terminal, « it's sent ») (la plateforme y répond toute seule, ne reposte rien dans le fil) : `ArtifactData` `get`, collection `reponses`, doc `<tour>`, sur l'URL de l'artefact. Le document contient :
+Quand l'utilisateur dit que c'est envoyé, demande où on en est, ou qu'un commentaire « Quiz … rempli » ou « … rendu pour les bloquantes » t'arrive de l'artefact (quiz en anglais : « Quiz … completed », « … sent for the blocking questions only » ; dans la conversation, « c'est envoyé » ou « it's sent », quel que soit l'appareil d'où il a répondu) (la plateforme y répond toute seule, ne reposte rien dans le fil) : `ArtifactData` `get`, collection `reponses`, doc `<tour>`, sur l'URL de l'artefact. Le document contient :
 - `reponses` (id → clé d'option, `toi` pour « À toi de voir », liste de clés pour `multi`, texte pour `texte`) et `notes` (id → nuance libre) ;
 - `tenir` (id → `fort` : il y tient, respecte-le strictement ; `souple` : peu importe, tu peux arbitrer autrement si ça simplifie, et dis-le) ;
 - `masquees` : questions dont la condition est fausse. Leur réponse éventuelle est sans objet, ignore-la ;
@@ -131,10 +131,10 @@ Pour republier les mêmes questions encore ouvertes : même `tour` (même `file_
 
 ## 5. Recadrer
 
-Quand l'utilisateur trouve que le quiz part de travers, il clique « Recadrer » (ou répond « Non » au cadrage). Un commentaire « Quiz … à recadrer » t'arrive (en anglais « Quiz … needs reframing » ; sinon il dit « recadré », ou « reframed », dans le terminal) :
+Quand l'utilisateur trouve que le quiz part de travers, il clique « Recadrer » (ou répond « Non » au cadrage). Un commentaire « Quiz … à recadrer » t'arrive (en anglais « Quiz … needs reframing » ; sinon il dit « recadré », ou « reframed », dans la conversation) :
 
 1. `ArtifactData` `get`, collection `reponses`, doc `<tour>`. La dernière entrée de `recadrages` est la demande : `le` (son identifiant), `a` (la dernière question touchée), `raisons`, `texte`, `portee` (`suite` : garder ses réponses et réécrire le reste ; `tout` : repartir de zéro). Si elle est `annule`, ou si son `le` vaut déjà `recadre.le` du JSON publié ou `fait` de `recadrage/<tour>` (relance en double : il la modifie après envoi, chaque envoi relance), ne fais rien, résous le fil et dis-le en une ligne. S'il n'y a aucune entrée mais que le commentaire contient la demande (enregistrement raté), sers-toi du commentaire. Revérifie `annule` et `le` juste avant de republier. Lis aussi ses réponses et ses nuances : celles déjà données montrent où tu t'es trompé.
-2. Comprends l'écart avant de réécrire. S'il reste ambigu, pose-lui la question dans le terminal plutôt que de deviner une deuxième fois.
+2. Comprends l'écart avant de réécrire. S'il reste ambigu, pose-lui la question dans la conversation plutôt que de deviner une deuxième fois.
 3. Réécris le JSON, même `tour` :
    - `suite` : garde les questions déjà répondues (retire celles que la demande invalide, et dis-le), remplace toutes les autres ;
    - `tout` : remplace toutes les questions ;
@@ -148,7 +148,7 @@ Quand l'utilisateur trouve que le quiz part de travers, il clique « Recadrer »
 
 ## 6. Approfondir
 
-Quand `bilan/<tour>` existe, la page propose « Approfondir » avec un champ « Sur quoi ? ». Elle écrit `reponses/<tour>.approfondir = {"le", "texte"}` et te relance (« Quiz … à approfondir (tour tN) : ... », en anglais « Quiz …: go deeper (round tN): ... ») ; s'il dit « approfondir » (« go deeper ») dans le terminal, lis ce même champ.
+Quand `bilan/<tour>` existe, la page propose « Approfondir » avec un champ « Sur quoi ? ». Elle écrit `reponses/<tour>.approfondir = {"le", "texte"}` et te relance (« Quiz … à approfondir (tour tN) : ... », en anglais « Quiz …: go deeper (round tN): ... ») ; s'il dit « approfondir » (« go deeper ») dans la conversation, lis ce même champ.
 
 1. Relis `reponses/<tour>` (approfondir.texte, notes, autre) et `bilan/<tour>.suite` : ce sont les questions que ses choix ont ouvertes.
 2. Prépare le tour suivant : même `nom`, même `langue`, `"tour": "t2"` (puis t3...), et `"precedent": {"tour": "t1", "resume": "ce que le tour t1 a réglé, une phrase"}` que la page affiche en haut. Nouvelles questions, nouveaux ids. Même travail de cadrage, de prédictions et de fond qu'au premier tour.
