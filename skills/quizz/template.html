@@ -1118,6 +1118,8 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
   .pill { width: 40px; height: 40px; }
   .rtenir button { padding: 11px 6px; margin: -11px -2px; }
 }
+/* Au doigt : 16 px au moins dans les champs, sinon Safari sur iPhone zoome la page à chaque saisie. */
+@media (pointer: coarse) { textarea, input, select { font-size: max(16px, 1em) !important; } }
 
 /* Aide clavier, en surimpression */
 .keys-hint { margin: 14px 0 0; font-size: 14px; color: var(--muted); }
@@ -2732,6 +2734,7 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
         : sent ? "{{c_est_envoye_claude_a_ton}}" + qui + "{{le_verra_a_cote_de_ses}}"
         : "{{c_est_enregistre}}" + qui + "{{verra_ton_avis_a_cote_de}}")
       : finEnvoi ? "{{envoi_a_claude}}"
+      : finEnBase === false ? "{{pas_enregistre_tes_reponses}}"
       : bilanAJour() ? "{{c_est_applique_ce_que_j}}"
       : sent ? (f.partiel ? "{{c_est_envoye_j_applique_les}}" : "{{c_est_envoye_je_relis_tes}}")
       : f.partiel ? "{{reviens_terminal_bloquantes}}" : "{{reviens_terminal_relis_tout}}";
@@ -2905,6 +2908,23 @@ html:not([data-role]) [data-proprio] { visibility: hidden; }
     if (state.termine) { state.termine = false; state.finiLe = null; }
     if (q && q.type === "texte") paint(q, true);
     geste = true; recap(); save();
+  }
+  // Clavier virtuel (iPhone, Android) : le champ qui prend le focus reste visible au-dessus du clavier.
+  if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) {
+    document.addEventListener("focusin", function (e) {
+      var el = e.target;
+      if (!el || !/^(TEXTAREA|INPUT|SELECT)$/.test(el.tagName)) return;
+      var voir = function () {
+        var vv = window.visualViewport, r = el.getBoundingClientRect();
+        var haut = vv ? vv.height : window.innerHeight;
+        if (r.top < 8 || r.bottom > haut - 8) el.scrollIntoView({ block: "center", behavior: "auto" });
+      };
+      if (window.visualViewport) {
+        var fait = false, une = function () { if (fait) return; fait = true; window.visualViewport.removeEventListener("resize", une); voir(); };
+        window.visualViewport.addEventListener("resize", une);
+        setTimeout(une, 350);
+      } else setTimeout(voir, 350);
+    });
   }
   var autre = $("autre");
   autre.addEventListener("input", function () { fit(autre); state.autre = autre.value; edited(null); });

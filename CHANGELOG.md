@@ -2,6 +2,14 @@
 
 Versions follow [SemVer](https://semver.org/). Details for each version are on the [Releases](https://github.com/AThevon/quizz/releases) page.
 
+## 1.10.0 (2026-11-26)
+
+- Phone-friendly answering: on a touch screen, every text field uses at least 16 px, so Safari on iPhone no longer zooms the page each time you type a note.
+- The field you tap stays visible above the virtual keyboard.
+- After "Send my answers", when the page cannot wake Claude (the Claude mobile app may not offer sending to Claude), it now says your answers are saved and to tell Claude "it's sent" in your conversation, from any device, instead of pointing to a terminal.
+- If the page cannot save at all (opened outside claude.ai), it says so plainly instead of claiming it was sent.
+- The skill reads your answers whatever device you answered from.
+
 ## 1.9.0 (2026-11-25)
 
 - Bubble is now the default theme: quizzes of anyone who has not picked a theme, and the decision log. It is the former `homie` theme, renamed, with the same look.
